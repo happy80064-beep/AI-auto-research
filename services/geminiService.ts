@@ -3,7 +3,7 @@ import { SessionData } from './storage';
 // import { functions } from '../src/firebaseConfig';
 // import { httpsCallable } from 'firebase/functions';
 
-const getFunctionUrl = (name: string) => `https://us-central1-gen-lang-client-0856016385.cloudfunctions.net/${name}`;
+const getFunctionUrl = (name: string) => `https://api-proxy.zeabur.app/api/${name}`;
 
 const callFunction = async <T>(name: string, data: any): Promise<T> => {
     const response = await fetch(getFunctionUrl(name), {
