@@ -8,39 +8,46 @@ const FIREBASE_FUNCTION_URL = 'https://us-central1-gen-lang-client-0856016385.cl
 const CORS_PROXY = 'https://cors-anywhere.herokuapp.com';
 
 const callFunction = async <T>(name: string, data: any): Promise<T> => {
-    // 强制使用 Zeabur 代理，它是唯一目前证明可用的路径
-    const targetUrl = `https://api-proxy.zeabur.app/api/${name}`;
+    console.log(`[GeminiService] Calling function: ${name}`);
+    
+    // 策略 1: Zeabur 代理 (带 /api 前缀)
+    const proxyUrlApi = `https://api-proxy.zeabur.app/api/${name}`;
     
     try {
-        const response = await fetch(targetUrl, {
+        const response = await fetch(proxyUrlApi, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ data }), // Wrapper to match our backend expectation
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data }),
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Function ${name} failed: ${response.status} ${response.statusText} - ${errorText}`);
+        if (response.ok) {
+            const result = await response.json();
+            return result.data;
+        } else if (response.status === 404) {
+            console.warn(`Proxy /api path returned 404, trying without /api prefix...`);
+            // 策略 2: Zeabur 代理 (无 /api 前缀)
+            const proxyUrlRoot = `https://api-proxy.zeabur.app/${name}`;
+            const responseRoot = await fetch(proxyUrlRoot, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data }),
+            });
+            
+            if (responseRoot.ok) {
+                const result = await responseRoot.json();
+                return result.data;
+            }
         }
-
-        const result = await response.json();
-        if (result.error) {
-            throw new Error(result.error.message || "Unknown error from function");
-        }
-        return result.data;
-    } catch (error: any) {
-        // 如果代理也失败，尝试直接调用（作为最后的备选，虽然极有可能失败）
-        console.warn(`Proxy call failed (${error.message}), trying direct call as fallback...`);
-        const directUrl = `https://us-central1-gen-lang-client-0856016385.cloudfunctions.net/${name}`;
+        throw new Error(`Proxy failed: ${response.status}`);
+    } catch (proxyError: any) {
+        console.warn(`Proxy strategies failed (${proxyError.message}), trying direct call...`);
         
+        // 策略 3: 直接调用 Cloud Functions
+        const directUrl = `https://us-central1-gen-lang-client-0856016385.cloudfunctions.net/${name}`;
         try {
             const response = await fetch(directUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data }),
             });
             
@@ -48,15 +55,16 @@ const callFunction = async <T>(name: string, data: any): Promise<T> => {
             const result = await response.json();
             return result.data;
         } catch (directError: any) {
-            // 最后尝试使用 cors-anywhere
             console.warn(`Direct call failed (${directError.message}), trying cors-anywhere...`);
+            
+            // 策略 4: cors-anywhere 终极备选
             const corsAnywhereUrl = `https://cors-anywhere.herokuapp.com/${directUrl}`;
             try {
                  const response = await fetch(corsAnywhereUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest' // cors-anywhere 要求
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify({ data }),
                 });
@@ -65,7 +73,8 @@ const callFunction = async <T>(name: string, data: any): Promise<T> => {
                 const result = await response.json();
                 return result.data;
             } catch (finalError: any) {
-                throw new Error(error.message || "Failed to call function");
+                console.error("All strategies failed.");
+                throw new Error(`All connection methods failed. Last error: ${finalError.message}`);
             }
         }
     }
