@@ -1,29 +1,62 @@
 import { ResearchContext, ResearchPlan, AnalysisResult, ProjectReport } from '../types';
 import { SessionData } from './storage';
-// import { functions } from '../src/firebaseConfig';
-// import { httpsCallable } from 'firebase/functions';
 
-const getFunctionUrl = (name: string) => `https://api-proxy.zeabur.app/api/${name}`;
+// Firebase 函数 URL
+const FIREBASE_FUNCTION_URL = 'https://us-central1-gen-lang-client-0856016385.cloudfunctions.net';
+
+// 使用 CORS 代理的 URL
+const CORS_PROXY = 'https://cors-anywhere.herokuapp.com';
 
 const callFunction = async <T>(name: string, data: any): Promise<T> => {
-    const response = await fetch(getFunctionUrl(name), {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ data }), // Wrapper to match our backend expectation
-    });
+    const targetUrl = `${FIREBASE_FUNCTION_URL}/${name}`;
+    
+    // 方法 1: 尝试直接调用（如果 Firebase 函数已配置 CORS）
+    try {
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ data }),
+        });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Function ${name} failed: ${response.status} ${response.statusText} - ${errorText}`);
-    }
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
 
-    const result = await response.json();
-    if (result.error) {
-        throw new Error(result.error.message || "Unknown error from function");
+        const result = await response.json();
+        if (result.error) {
+            throw new Error(result.error.message || "Unknown error");
+        }
+        return result.data;
+    } catch (directError: any) {
+        console.warn('Direct call failed, trying CORS proxy:', directError.message);
+        
+        // 方法 2: 使用 CORS 代理作为备选
+        try {
+            const proxyUrl = `${CORS_PROXY}/${targetUrl}`;
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (result.error) {
+                throw new Error(result.error.message || "Unknown error");
+            }
+            return result.data;
+        } catch (proxyError: any) {
+            console.error('Both direct and proxy calls failed:', proxyError);
+            throw new Error('Failed to call function: ' + proxyError.message);
+        }
     }
-    return result.data;
 };
 
 export const generateResearchPlan = async (context: ResearchContext): Promise<ResearchPlan> => {
