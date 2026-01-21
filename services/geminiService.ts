@@ -48,7 +48,25 @@ const callFunction = async <T>(name: string, data: any): Promise<T> => {
             const result = await response.json();
             return result.data;
         } catch (directError: any) {
-            throw new Error(error.message || "Failed to call function");
+            // 最后尝试使用 cors-anywhere
+            console.warn(`Direct call failed (${directError.message}), trying cors-anywhere...`);
+            const corsAnywhereUrl = `https://cors-anywhere.herokuapp.com/${directUrl}`;
+            try {
+                 const response = await fetch(corsAnywhereUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest' // cors-anywhere 要求
+                    },
+                    body: JSON.stringify({ data }),
+                });
+                
+                if (!response.ok) throw new Error(`Cors-anywhere failed: ${response.status}`);
+                const result = await response.json();
+                return result.data;
+            } catch (finalError: any) {
+                throw new Error(error.message || "Failed to call function");
+            }
         }
     }
 };
