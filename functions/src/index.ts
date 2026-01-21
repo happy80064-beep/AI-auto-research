@@ -3,7 +3,10 @@ import * as admin from "firebase-admin";
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import * as cors from "cors";
 
-const corsHandler = cors({ origin: true });
+const corsHandler = cors({
+    origin: ['https://autoresearch.zeabur.app', 'http://localhost:5173'],
+    credentials: true
+});
 
 admin.initializeApp();
 
