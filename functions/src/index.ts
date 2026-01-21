@@ -7,8 +7,9 @@ admin.initializeApp();
 // Helper for CORS headers
 const setCorsHeaders = (res: functions.Response) => {
     res.set('Access-Control-Allow-Origin', '*'); // Allow all origins for debugging
-    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Max-Age', '3600');
     // res.set('Access-Control-Allow-Credentials', 'true'); // Cannot use Credentials with '*' origin
 };
 
