@@ -6,10 +6,10 @@ admin.initializeApp();
 
 // Helper for CORS headers
 const setCorsHeaders = (res: functions.Response) => {
-    res.set('Access-Control-Allow-Origin', 'https://autoresearch.zeabur.app');
+    res.set('Access-Control-Allow-Origin', '*'); // Allow all origins for debugging
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
-    res.set('Access-Control-Allow-Credentials', 'true');
+    // res.set('Access-Control-Allow-Credentials', 'true'); // Cannot use Credentials with '*' origin
 };
 
 // Configuration
