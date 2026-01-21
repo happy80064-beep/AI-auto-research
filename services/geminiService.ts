@@ -8,53 +8,47 @@ const FIREBASE_FUNCTION_URL = 'https://us-central1-gen-lang-client-0856016385.cl
 const CORS_PROXY = 'https://cors-anywhere.herokuapp.com';
 
 const callFunction = async <T>(name: string, data: any): Promise<T> => {
-    const targetUrl = `${FIREBASE_FUNCTION_URL}/${name}`;
+    // 强制使用 Zeabur 代理，它是唯一目前证明可用的路径
+    const targetUrl = `https://api-proxy.zeabur.app/api/${name}`;
     
-    // 方法 1: 尝试直接调用（如果 Firebase 函数已配置 CORS）
     try {
         const response = await fetch(targetUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ data }),
+            body: JSON.stringify({ data }), // Wrapper to match our backend expectation
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`Function ${name} failed: ${response.status} ${response.statusText} - ${errorText}`);
         }
 
         const result = await response.json();
         if (result.error) {
-            throw new Error(result.error.message || "Unknown error");
+            throw new Error(result.error.message || "Unknown error from function");
         }
         return result.data;
-    } catch (directError: any) {
-        console.warn('Direct call failed, trying CORS proxy:', directError.message);
+    } catch (error: any) {
+        // 如果代理也失败，尝试直接调用（作为最后的备选，虽然极有可能失败）
+        console.warn(`Proxy call failed (${error.message}), trying direct call as fallback...`);
+        const directUrl = `https://us-central1-gen-lang-client-0856016385.cloudfunctions.net/${name}`;
         
-        // 方法 2: 使用 CORS 代理作为备选
         try {
-            const proxyUrl = `${CORS_PROXY}/${targetUrl}`;
-            const response = await fetch(proxyUrl, {
+            const response = await fetch(directUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ data }),
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
+            
+            if (!response.ok) throw new Error(`Direct call failed: ${response.status}`);
             const result = await response.json();
-            if (result.error) {
-                throw new Error(result.error.message || "Unknown error");
-            }
             return result.data;
-        } catch (proxyError: any) {
-            console.error('Both direct and proxy calls failed:', proxyError);
-            throw new Error('Failed to call function: ' + proxyError.message);
+        } catch (directError: any) {
+            throw new Error(error.message || "Failed to call function");
         }
     }
 };
