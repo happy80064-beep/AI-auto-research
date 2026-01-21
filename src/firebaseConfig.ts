@@ -1,40 +1,34 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
+import { getAnalytics } from "firebase/analytics";
 
-// TODO: Replace with your actual Firebase project configuration
-// You can find this in Firebase Console -> Project Settings -> General -> Your apps
 const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "REPLACE_WITH_SENDER_ID",
-  appId: "REPLACE_WITH_APP_ID"
+  apiKey: "AIzaSyCy8XO4536nBVdr7fokxkigLlNrK0YnpJI",
+  authDomain: "gen-lang-client-0856016385.firebaseapp.com",
+  projectId: "gen-lang-client-0856016385",
+  storageBucket: "gen-lang-client-0856016385.firebasestorage.app",
+  messagingSenderId: "907985199070",
+  appId: "1:907985199070:web:68f5cba4b6c124695c074f",
+  measurementId: "G-89DQYVR25M"
 };
 
 // Initialize only if config is valid to prevent crashes in dev if not set up
 let db: any = null;
 let functions: any = null;
+let analytics: any = null;
 
 try {
-    if (firebaseConfig.apiKey !== "REPLACE_WITH_YOUR_API_KEY") {
-        const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        // Initialize Functions, default region is us-central1. 
-        // If you change the region in functions/src/index.ts, change it here too.
-        functions = getFunctions(app, 'us-central1');
-        
-        // Uncomment the following line to use a local emulator during development
-        // import { connectFunctionsEmulator } from "firebase/functions";
-        // connectFunctionsEmulator(functions, "localhost", 5001);
-        
-        console.log("Firebase initialized successfully");
-    } else {
-        console.warn("Firebase config not set. Falling back to LocalStorage.");
-    }
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    // Initialize Functions, default region is us-central1. 
+    // If you change the region in functions/src/index.ts, change it here too.
+    functions = getFunctions(app, 'us-central1');
+    analytics = getAnalytics(app);
+    
+    console.log("Firebase initialized successfully");
 } catch (e) {
     console.warn("Error initializing Firebase:", e);
 }
 
-export { db, functions };
+export { db, functions, analytics };
