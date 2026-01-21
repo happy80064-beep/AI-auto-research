@@ -10,6 +10,26 @@ const CORS_PROXY = 'https://cors-anywhere.herokuapp.com';
 const callFunction = async <T>(name: string, data: any): Promise<T> => {
     console.log(`[GeminiService] Calling function: ${name}`);
     
+    // 策略 0: Firebase Hosting Rewrites (同源代理 - 最佳方案)
+    // 这需要 firebase.json 配置 rewrites 将 /api/* 转发到 Cloud Functions
+    try {
+        const sameOriginUrl = `/api/${name}`;
+        console.log(`Trying same-origin call: ${sameOriginUrl}`);
+        const response = await fetch(sameOriginUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data }),
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            return result.data;
+        }
+        console.warn(`Same-origin call failed with status: ${response.status}`);
+    } catch (e: any) {
+        console.warn(`Same-origin call failed: ${e.message}`);
+    }
+
     // 策略 1: Zeabur 代理 (带 /api 前缀)
     const proxyUrlApi = `https://api-proxy.zeabur.app/api/${name}`;
     

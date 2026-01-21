@@ -23,6 +23,26 @@
     ],
     "rewrites": [
       {
+        "source": "/api/generateResearchPlan",
+        "function": "generateResearchPlan",
+        "region": "us-central1"
+      },
+      {
+        "source": "/api/refineResearchPlan",
+        "function": "refineResearchPlan",
+        "region": "us-central1"
+      },
+      {
+        "source": "/api/analyzeTranscripts",
+        "function": "analyzeTranscripts",
+        "region": "us-central1"
+      },
+      {
+        "source": "/api/generateProjectReport",
+        "function": "generateProjectReport",
+        "region": "us-central1"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
