@@ -1,0 +1,7 @@
+{
+  "name": "AI商业调研伙伴",
+  "description": "一个利用 Gemini 进行逻辑编排、实时语音访谈和自动洞察分析的 AI 调研平台。",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
