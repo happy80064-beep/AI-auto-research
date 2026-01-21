@@ -1,14 +1,16 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import * as cors from "cors";
-
-const corsHandler = cors({
-    origin: ['https://autoresearch.zeabur.app', 'http://localhost:5173'],
-    credentials: true
-});
 
 admin.initializeApp();
+
+// Helper for CORS headers
+const setCorsHeaders = (res: functions.Response) => {
+    res.set('Access-Control-Allow-Origin', 'https://autoresearch.zeabur.app');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Allow-Credentials', 'true');
+};
 
 // Configuration
 const ORCHESTRATOR_MODEL = 'gemini-3-pro-preview';
@@ -62,14 +64,19 @@ const getAiClient = () => {
 };
 
 // 1. Generate Research Plan
-export const generateResearchPlan = functions.region(REGION).https.onRequest((req, res) => {
-    corsHandler(req, res, async () => {
-        try {
-            const data = req.body.data || req.body; // Support both direct body and callable format
-            const { objectType, industry, demographics, userPersona, objectives, method, questionCount } = data;
-            const ai = getAiClient();
+export const generateResearchPlan = functions.region(REGION).https.onRequest(async (req, res) => {
+    setCorsHeaders(res);
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
 
-            const prompt = `
+    try {
+        const data = req.body.data || req.body; // Support both direct body and callable format
+        const { objectType, industry, demographics, userPersona, objectives, method, questionCount } = data;
+        const ai = getAiClient();
+
+        const prompt = `
             角色: 资深用户研究专家 & 商业分析师。
             任务: 基于详细的调研对象画像，生成一份专业的调研执行方案。
 
@@ -149,20 +156,24 @@ export const generateResearchPlan = functions.region(REGION).https.onRequest((re
 
             res.json({ data: plan }); // Return in callable format
 
-        } catch (error: any) {
-            console.error("Error generating plan:", error);
-            res.status(500).json({ error: { message: error.message || 'Failed to generate plan' } });
-        }
-    });
+    } catch (error: any) {
+        console.error("Error generating plan:", error);
+        res.status(500).json({ error: { message: error.message || 'Failed to generate plan' } });
+    }
 });
 
 // 2. Refine Research Plan
-export const refineResearchPlan = functions.region(REGION).https.onRequest((req, res) => {
-    corsHandler(req, res, async () => {
-        try {
-            const data = req.body.data || req.body;
-            const { currentPlan, refineInstructions } = data;
-            const ai = getAiClient();
+export const refineResearchPlan = functions.region(REGION).https.onRequest(async (req, res) => {
+    setCorsHeaders(res);
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    try {
+        const data = req.body.data || req.body;
+        const { currentPlan, refineInstructions } = data;
+        const ai = getAiClient();
 
             // Separate fixed questions logic (simplified for backend)
             const fixedIds = ['id_job', 'id_industry', 'id_age', 'id_gender'];
@@ -198,20 +209,24 @@ export const refineResearchPlan = functions.region(REGION).https.onRequest((req,
             
             res.json({ data: refinedPlan });
 
-        } catch (error: any) {
-            console.error("Refine Plan Failed:", error);
-            res.status(500).json({ error: { message: error.message } });
-        }
-    });
+    } catch (error: any) {
+        console.error("Refine Plan Failed:", error);
+        res.status(500).json({ error: { message: error.message } });
+    }
 });
 
 // 3. Analyze Transcripts
-export const analyzeTranscripts = functions.region(REGION).https.onRequest((req, res) => {
-    corsHandler(req, res, async () => {
-        try {
-            const data = req.body.data || req.body;
-            const { transcripts } = data;
-            const ai = getAiClient();
+export const analyzeTranscripts = functions.region(REGION).https.onRequest(async (req, res) => {
+    setCorsHeaders(res);
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    try {
+        const data = req.body.data || req.body;
+        const { transcripts } = data;
+        const ai = getAiClient();
 
             const prompt = `
             作为首席数据分析师，请深入分析以下访谈/问卷记录。
@@ -246,20 +261,24 @@ export const analyzeTranscripts = functions.region(REGION).https.onRequest((req,
             
             res.json({ data: result });
 
-        } catch (error: any) {
-            console.error("Analysis Failed:", error);
-            res.status(500).json({ error: { message: error.message } });
-        }
-    });
+    } catch (error: any) {
+        console.error("Analysis Failed:", error);
+        res.status(500).json({ error: { message: error.message } });
+    }
 });
 
 // 4. Generate Project Report
-export const generateProjectReport = functions.region(REGION).https.onRequest((req, res) => {
-    corsHandler(req, res, async () => {
-        try {
-            const data = req.body.data || req.body;
-            const { projectTitle, sessions } = data;
-            const ai = getAiClient();
+export const generateProjectReport = functions.region(REGION).https.onRequest(async (req, res) => {
+    setCorsHeaders(res);
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    try {
+        const data = req.body.data || req.body;
+        const { projectTitle, sessions } = data;
+        const ai = getAiClient();
 
             const aggregatedContent = sessions
                 .filter((s: any) => s.transcript)
@@ -326,6 +345,5 @@ export const generateProjectReport = functions.region(REGION).https.onRequest((r
         } catch (error: any) {
             console.error("Report Generation Failed:", error);
             res.status(500).json({ error: { message: error.message } });
-        }
-    });
+    }
 });
