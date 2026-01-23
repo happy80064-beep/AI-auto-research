@@ -52,14 +52,12 @@ app.post('/api/:functionName', async (req, res) => {
   }
 });
 
-// Serve static files from the dist directory
-app.use(express.static(join(__dirname, 'dist')));
-
-// Handle SPA routing: return index.html for any unknown path
-app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, 'dist', 'index.html'));
-});
-
+// Serve static files  
+app.use(express.static(join(__dirname, 'dist')));  
+// SPA fallback  
+app.use((req, res) => {  
+  res.sendFile(join(__dirname, 'dist', 'index.html'));  
+});  
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
