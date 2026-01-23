@@ -3,6 +3,7 @@ import { ResearchPlan, ResearchContext, VoiceSettings } from '../types';
 import { refineResearchPlan } from '../services/geminiService';
 import { saveSession } from '../services/storage';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getSessionLink } from '../src/utils/url';
 
 interface PlanReviewProps {
   initialPlan: ResearchPlan;

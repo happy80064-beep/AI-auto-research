@@ -3,6 +3,7 @@ import { AnalysisResult } from '../types';
 import { analyzeTranscripts } from '../services/geminiService';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getSessionLink } from '../src/utils/url';
 
 interface DashboardProps {
   fullTranscript: string;

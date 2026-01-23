@@ -4,6 +4,7 @@ import { analyzeTranscripts, generateProjectReport } from '../services/geminiSer
 import { getAllSessions, saveSession, SessionData, saveProjectReport, getProjectReport } from '../services/storage';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Treemap, Sector } from 'recharts';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getSessionLink } from '../src/utils/url';
 
 interface GlobalDashboardProps {
   onBack: () => void;
