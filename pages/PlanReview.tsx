@@ -73,7 +73,8 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
       // 继续生成链接，即使保存失败  
     }  
       
-    const link = getSessionLink(uniqueId);
+    // Use Template Link so that multiple people can click it and start their OWN sessions
+    const link = getTemplateLink(uniqueId);
     setShareLink(link);  
     setShowLinkModal(true);  
   } catch (error) {  

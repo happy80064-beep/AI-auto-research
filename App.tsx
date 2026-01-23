@@ -119,17 +119,29 @@ const AppContent = () => {
 
   const handlePlanConfirmed = async (finalPlan: ResearchPlan) => {
     setResearchPlan(finalPlan);
+    
     // If we are starting fresh (Admin flow), generate a session ID now so we can save results
     if (!sessionId) {
         const newId = Math.random().toString(36).substring(2, 9);
         setSessionId(newId);
+        
         // Persist initial draft using Storage Service
-        await saveSession({
+        // We add a timeout/race here so UI doesn't freeze if Cloud is unreachable
+        const savePromise = saveSession({
             id: newId,
             plan: finalPlan,
             context: researchContext!,
             timestamp: Date.now()
         });
+
+        // 3 second timeout for initial save
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 3000));
+        
+        try {
+            await Promise.race([savePromise, timeoutPromise]);
+        } catch (e) {
+            console.warn("Initial session save timed out or failed, proceeding anyway", e);
+        }
     }
 
     if (researchContext?.method === 'voice') {
