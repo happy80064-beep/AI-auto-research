@@ -207,6 +207,7 @@ const AppContent = () => {
       {currentRoute === AppRoute.ANALYSIS && (
         <Dashboard 
             fullTranscript={fullTranscript} 
+            sessionId={sessionId}
             onRestart={handleRestart} 
         />
       )}

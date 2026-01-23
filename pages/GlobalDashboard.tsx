@@ -417,7 +417,7 @@ export const GlobalDashboard: React.FC<GlobalDashboardProps> = ({ onBack }) => {
   const projectShareUrl = useMemo(() => {
       if (!currentProjectSessions.length) return '';
       const baseId = currentProjectSessions[currentProjectSessions.length - 1].id;
-      return `${window.location.origin}${window.location.pathname}?session=${baseId}`;
+      return getSessionLink(baseId);
   }, [currentProjectSessions]);
 
   // --- Actions ---

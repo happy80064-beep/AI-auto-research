@@ -72,10 +72,8 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
       // 继续生成链接，即使保存失败  
     }  
       
-    const url = new URL(window.location.href);  
-    url.search = '';   
-    url.searchParams.set('session', uniqueId);  
-    setShareLink(url.toString());  
+    const link = getSessionLink(uniqueId);
+    setShareLink(link);  
     setShowLinkModal(true);  
   } catch (error) {  
     console.error('Error generating link:', error);  
