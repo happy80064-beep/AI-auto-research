@@ -26,3 +26,10 @@ export const getAppUrl = (path: string = ''): string => {
 export const getSessionLink = (sessionId: string): string => {
     return getAppUrl(`?session=${sessionId}`);
 };
+
+/**
+ * Helper to generate a template link (for creating new sessions from a plan).
+ */
+export const getTemplateLink = (templateId: string): string => {
+    return getAppUrl(`?template=${templateId}`);
+};

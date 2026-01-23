@@ -417,8 +417,9 @@ export const GlobalDashboard: React.FC<GlobalDashboardProps> = ({ onBack }) => {
   // Construct Share URL
   const projectShareUrl = useMemo(() => {
       if (!currentProjectSessions.length) return '';
-      const baseId = currentProjectSessions[currentProjectSessions.length - 1].id;
-      return getSessionLink(baseId);
+      // Use the first session as the template source (assuming all sessions in project share same plan)
+      const baseId = currentProjectSessions[0].id;
+      return getTemplateLink(baseId);
   }, [currentProjectSessions]);
 
   // --- Actions ---
