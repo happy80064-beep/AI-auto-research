@@ -1,27 +1,28 @@
-{
-  "name": "insightflow-ai",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "start": "node server.js",
-    "preview": "vite preview"
-  },
-  "dependencies": {
+{  
+  "name": "insightflow-ai",  
+  "version": "1.0.0",  
+  "type": "module",  
+  "scripts": {  
+    "dev": "vite",  
+    "build": "vite build",  
+    "start": "node server.js",  
+    "preview": "vite preview"  
+  },  
+  "dependencies": {  
     "@google/generative-ai": "^0.11.0",  
-    "express": "^5.2.1",
-    "firebase": "^10.12.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "recharts": "^3.6.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "firebase-tools": "^15.3.1",
-    "typescript": "^5.5.3",
-    "vite": "^5.3.4"
-  }
-}
+    "express": "^5.2.1",  
+    "firebase": "^10.12.0",  
+    "firebase-admin": "^12.0.0",  // ← 添加这一行  
+    "react": "^18.3.1",  
+    "react-dom": "^18.3.1",  
+    "recharts": "^3.6.0"  
+  },  
+  "devDependencies": {  
+    "@types/react": "^18.3.3",  
+    "@types/react-dom": "^18.3.0",  
+    "@vitejs/plugin-react": "^4.3.1",  
+    "firebase-tools": "^15.3.1",  
+    "typescript": "^5.5.3",  
+    "vite": "^5.3.4"  
+  }  
+}  
