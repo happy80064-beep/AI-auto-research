@@ -49,20 +49,39 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
     }
   };
 
-  const handleGenerateLink = async () => {
-    const uniqueId = Math.random().toString(36).substring(2, 9);
-    await saveSession({
-        id: uniqueId,
-        plan,
-        context,
-        timestamp: Date.now()
-    });
-    const url = new URL(window.location.href);
-    url.search = ''; 
-    url.searchParams.set('session', uniqueId);
-    setShareLink(url.toString());
-    setShowLinkModal(true);
-  };
+  const handleGenerateLink = async () => {  
+  try {  
+    const uniqueId = Math.random().toString(36).substring(2, 9);  
+      
+    // 添加超时机制 - 如果 saveSession 超过 5 秒就跳过  
+    const savePromise = saveSession({  
+        id: uniqueId,  
+        plan,  
+        context,  
+        timestamp: Date.now()  
+    });  
+      
+    const timeoutPromise = new Promise((_, reject) =>   
+      setTimeout(() => reject(new Error('Save timeout')), 5000)  
+    );  
+      
+    try {  
+      await Promise.race([savePromise, timeoutPromise]);  
+    } catch (e) {  
+      console.warn('Session save failed or timed out, continuing anyway:', e);  
+      // 继续生成链接，即使保存失败  
+    }  
+      
+    const url = new URL(window.location.href);  
+    url.search = '';   
+    url.searchParams.set('session', uniqueId);  
+    setShareLink(url.toString());  
+    setShowLinkModal(true);  
+  } catch (error) {  
+    console.error('Error generating link:', error);  
+    alert('生成链接失败，请重试');  
+  }  
+};  
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareLink);
