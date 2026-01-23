@@ -69,8 +69,8 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
     try {  
       await Promise.race([savePromise, timeoutPromise]);  
     } catch (e) {  
-      console.warn('Session save failed or timed out, continuing anyway:', e);  
-      // 继续生成链接，即使保存失败  
+      console.error('Session save failed or timed out:', e);
+      alert('注意：云端保存失败或超时。生成的链接可能无法在其他设备上访问。请检查网络连接。');
     }  
       
     // Use Template Link so that multiple people can click it and start their OWN sessions

@@ -67,10 +67,10 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
   const connect = async () => {  
     try {  
       if (!genAIRef.current) {  
-        // API Key should be passed from environment or props  
-        const apiKey = process.env.REACT_APP_GEMINI_API_KEY || '';  
+        // API Key should be passed from environment (Vite)
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';  
         if (!apiKey) {  
-          throw new Error('GEMINI_API_KEY is not configured');  
+          throw new Error('GEMINI_API_KEY is not configured. Please set VITE_GEMINI_API_KEY in your environment.');  
         }  
         genAIRef.current = new GoogleGenerativeAI({ apiKey });  
       }  
