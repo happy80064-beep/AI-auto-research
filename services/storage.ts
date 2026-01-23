@@ -25,9 +25,16 @@ export const saveSession = async (data: SessionData) => {
   // 2. Save to Firestore if available
   if (db) {
     try {
-      await setDoc(doc(db, COLLECTION_NAME, data.id), data);
+      console.log(`[Storage] Starting Firestore save for ${data.id}...`);
+      // Add a 4-second timeout specifically for the network request
+      const saveTask = setDoc(doc(db, COLLECTION_NAME, data.id), data);
+      const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore operation timed out')), 4000));
+      
+      await Promise.race([saveTask, timeoutTask]);
+      console.log(`[Storage] Firestore save complete for ${data.id}`);
     } catch (e) {
       console.error("Firestore save failed", e);
+      // Do not throw, so the UI can proceed with local data
     }
   }
 };
