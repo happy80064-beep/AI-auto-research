@@ -63,12 +63,16 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
         timestamp: Date.now()  
     });  
       
-    const timeoutPromise = new Promise((_, reject) =>   
+    const timeoutPromise = new Promise<boolean>((_, reject) =>   
       setTimeout(() => reject(new Error('Save timeout')), 10000)  
     );  
       
     try {  
-      await Promise.race([savePromise, timeoutPromise]);  
+      const success = await Promise.race([savePromise, timeoutPromise]);
+      if (!success) {
+          console.warn('Session save returned false, using payload link');
+          usePayload = true;
+      }
     } catch (e) {  
       console.error('Session save failed or timed out:', e);
       usePayload = true;

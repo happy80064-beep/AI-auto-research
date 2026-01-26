@@ -34,7 +34,7 @@ const retryOperation = async <T>(operation: () => Promise<T>, maxRetries = 3, de
     throw lastError;
 };
 
-export const saveSession = async (data: SessionData) => {
+export const saveSession = async (data: SessionData): Promise<boolean> => {
   // 1. Always save to LocalStorage for redundancy/local speed
   try {
     localStorage.setItem(`insightflow_${data.id}`, JSON.stringify(data));
@@ -54,11 +54,13 @@ export const saveSession = async (data: SessionData) => {
           await Promise.race([saveTask, timeoutTask]);
       });
       console.log(`[Storage] Firestore save complete for ${data.id}`);
+      return true;
     } catch (e) {
       console.error("Firestore save failed", e);
-      // Do not throw, so the UI can proceed with local data
+      return false;
     }
   }
+  return false;
 };
 
 export const getSession = async (id: string): Promise<SessionData | null> => {
