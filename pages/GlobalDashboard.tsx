@@ -4,7 +4,7 @@ import { analyzeTranscripts, generateProjectReport } from '../services/geminiSer
 import { getAllSessions, saveSession, SessionData, saveProjectReport, getProjectReport } from '../services/storage';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Treemap, Sector } from 'recharts';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getSessionLink, getTemplateLink } from '../src/utils/url';
+import { getSessionLink, getTemplateLink, getPayloadLink } from '../src/utils/url';
 
 interface GlobalDashboardProps {
   onBack: () => void;
@@ -417,9 +417,13 @@ export const GlobalDashboard: React.FC<GlobalDashboardProps> = ({ onBack }) => {
   // Construct Share URL
   const projectShareUrl = useMemo(() => {
       if (!currentProjectSessions.length) return '';
-      // Use the first session as the template source (assuming all sessions in project share same plan)
-      const baseId = currentProjectSessions[0].id;
-      return getTemplateLink(baseId);
+      // Use the first session as the template source
+      // We use getPayloadLink (embeds data in URL) to ensure the link works even if the session hasn't synced to Cloud
+      const baseSession = currentProjectSessions[0];
+      return getPayloadLink({
+          plan: baseSession.plan,
+          context: baseSession.context
+      });
   }, [currentProjectSessions]);
 
   // --- Actions ---

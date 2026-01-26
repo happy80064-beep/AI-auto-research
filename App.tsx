@@ -11,6 +11,7 @@ import { AppRoute, ResearchPlan, ResearchContext } from './types';
 import { analyzeTranscripts } from './services/geminiService';
 import { saveSession, getSession } from './services/storage';
 import { LanguageProvider } from './contexts/LanguageContext';
+import LZString from 'lz-string';
 
 const AppContent = () => {
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(AppRoute.HOME);
@@ -26,6 +27,7 @@ const AppContent = () => {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get('session');
     const tid = params.get('template');
+    const pid = params.get('payload');
     
     if (sid) {
       setSessionId(sid);
@@ -100,6 +102,51 @@ const AppContent = () => {
         }).finally(() => {
             setLoadingSession(false);
         });
+    } else if (pid) {
+        setLoadingSession(true);
+        setSessionError(null);
+        try {
+            const decompressed = LZString.decompressFromEncodedURIComponent(pid);
+            if (decompressed) {
+                const data = JSON.parse(decompressed);
+                if (data && data.plan && data.context) {
+                     const newId = Math.random().toString(36).substring(2, 9);
+                     
+                     // Optimistically set state
+                     setSessionId(newId);
+                     setResearchPlan(data.plan);
+                     setResearchContext(data.context);
+                     
+                     // Try to save
+                     const newSession = {
+                        id: newId,
+                        plan: data.plan,
+                        context: data.context,
+                        timestamp: Date.now()
+                    };
+                    saveSession(newSession).catch(e => console.warn("Background save failed", e));
+                    
+                    // Update URL
+                    const newUrl = `${window.location.pathname}?session=${newId}`;
+                    window.history.replaceState({ path: newUrl }, '', newUrl);
+                    
+                    if (data.context.method === 'voice') {
+                        setCurrentRoute(AppRoute.INTERVIEW);
+                    } else {
+                        setCurrentRoute(AppRoute.QUESTIONNAIRE);
+                    }
+                } else {
+                    setSessionError("无效的分享数据");
+                }
+            } else {
+                 setSessionError("链接数据解析失败");
+            }
+        } catch (e) {
+            console.error("Payload decode error", e);
+            setSessionError("链接数据已损坏");
+        } finally {
+            setLoadingSession(false);
+        }
     }
   }, []);
 
@@ -117,31 +164,44 @@ const AppContent = () => {
     setCurrentRoute(AppRoute.PLAN_REVIEW);
   };
 
-  const handlePlanConfirmed = async (finalPlan: ResearchPlan) => {
+  const handlePlanConfirmed = async (finalPlan: ResearchPlan, existingSessionId?: string) => {
     setResearchPlan(finalPlan);
     
     // If we are starting fresh (Admin flow), generate a session ID now so we can save results
-    if (!sessionId) {
-        const newId = Math.random().toString(36).substring(2, 9);
-        setSessionId(newId);
-        
-        // Persist initial draft using Storage Service
-        // We add a timeout/race here so UI doesn't freeze if Cloud is unreachable
-        const savePromise = saveSession({
-            id: newId,
-            plan: finalPlan,
-            context: researchContext!,
-            timestamp: Date.now()
-        });
+    let targetId = sessionId;
 
-        // 3 second timeout for initial save
-        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 3000));
+    if (existingSessionId) {
+        // Use the ID generated during link creation
+        targetId = existingSessionId;
+        setSessionId(existingSessionId);
         
-        try {
-            await Promise.race([savePromise, timeoutPromise]);
-        } catch (e) {
-            console.warn("Initial session save timed out or failed, proceeding anyway", e);
-        }
+        // Update URL to match this session
+        const newUrl = `${window.location.pathname}?session=${existingSessionId}`;
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+    }
+    
+    if (!targetId) {
+        const newId = Math.random().toString(36).substring(2, 9);
+        targetId = newId;
+        setSessionId(newId);
+    }
+        
+    // Persist initial draft using Storage Service
+    // We add a timeout/race here so UI doesn't freeze if Cloud is unreachable
+    const savePromise = saveSession({
+        id: targetId,
+        plan: finalPlan,
+        context: researchContext!,
+        timestamp: Date.now()
+    });
+
+    // 3 second timeout for initial save
+    const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 3000));
+    
+    try {
+        await Promise.race([savePromise, timeoutPromise]);
+    } catch (e) {
+        console.warn("Initial session save timed out or failed, proceeding anyway", e);
     }
 
     if (researchContext?.method === 'voice') {

@@ -3,12 +3,12 @@ import { ResearchPlan, ResearchContext, VoiceSettings } from '../types';
 import { refineResearchPlan } from '../services/geminiService';
 import { saveSession } from '../services/storage';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getSessionLink, getTemplateLink } from '../src/utils/url';
+import { getSessionLink, getTemplateLink, getPayloadLink } from '../src/utils/url';
 
 interface PlanReviewProps {
   initialPlan: ResearchPlan;
   context: ResearchContext;
-  onConfirm: (finalPlan: ResearchPlan) => void;
+  onConfirm: (finalPlan: ResearchPlan, sessionId?: string) => void;
   onBack: () => void;
   onEnterDashboard: () => void;
 }
@@ -33,6 +33,7 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
   const [refineInstruction, setRefineInstruction] = useState("");
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [shareLink, setShareLink] = useState("");
+  const [generatedId, setGeneratedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleOptimize = async () => {
@@ -51,10 +52,10 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
   };
 
   const handleGenerateLink = async () => {  
-  try {  
     const uniqueId = Math.random().toString(36).substring(2, 9);  
-      
-    // 添加超时机制 - 如果 saveSession 超过 5 秒就跳过  
+    let usePayload = false;
+
+    // 添加超时机制 - 如果 saveSession 超过 4 秒就跳过  
     const savePromise = saveSession({  
         id: uniqueId,  
         plan,  
@@ -63,25 +64,32 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
     });  
       
     const timeoutPromise = new Promise((_, reject) =>   
-      setTimeout(() => reject(new Error('Save timeout')), 5000)  
+      setTimeout(() => reject(new Error('Save timeout')), 4000)  
     );  
       
     try {  
       await Promise.race([savePromise, timeoutPromise]);  
     } catch (e) {  
       console.error('Session save failed or timed out:', e);
-      alert('注意：云端保存失败或超时。生成的链接可能无法在其他设备上访问。请检查网络连接。');
+      usePayload = true;
     }  
+    
+    // Always set generatedId even if save failed (App can retry save)
+    setGeneratedId(uniqueId);
       
-    // Use Template Link so that multiple people can click it and start their OWN sessions
-    const link = getTemplateLink(uniqueId);
+    let link;
+    if (usePayload) {
+        // Fallback: Generate a payload link that contains all data
+        // This works even if database is offline
+        link = getPayloadLink({ plan, context });
+    } else {
+        // Normal: Use Template Link (ID lookup)
+        link = getTemplateLink(uniqueId);
+    }
+
     setShareLink(link);  
     setShowLinkModal(true);  
-  } catch (error) {  
-    console.error('Error generating link:', error);  
-    alert('生成链接失败，请重试');  
-  }  
-};  
+  };  
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareLink);
@@ -91,7 +99,7 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
 
   const handleStartNow = () => {
     setShowLinkModal(false);
-    onConfirm(plan);
+    onConfirm(plan, generatedId || undefined);
   };
 
   const handleVoiceSettingChange = (updates: Partial<VoiceSettings>) => {

@@ -1,3 +1,4 @@
+import LZString from 'lz-string';
 
 /**
  * Generates a shareable URL for the application.
@@ -32,4 +33,14 @@ export const getSessionLink = (sessionId: string): string => {
  */
 export const getTemplateLink = (templateId: string): string => {
     return getAppUrl(`?template=${templateId}`);
+};
+
+/**
+ * Helper to generate a payload link (embeds entire plan in URL).
+ * Useful when offline or for instant sharing without database.
+ */
+export const getPayloadLink = (data: any): string => {
+    const json = JSON.stringify(data);
+    const compressed = LZString.compressToEncodedURIComponent(json);
+    return getAppUrl(`?payload=${compressed}`);
 };
