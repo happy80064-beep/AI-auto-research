@@ -24,12 +24,14 @@ const AppContent = () => {
 
   // Check for shared session link on load
   useEffect(() => {
+    console.log("[App] Checking URL params:", window.location.search);
     const params = new URLSearchParams(window.location.search);
     const sid = params.get('session');
     const tid = params.get('template');
     const pid = params.get('payload');
     
     if (sid) {
+      console.log("[App] Found session ID:", sid);
       setSessionId(sid);
       setLoadingSession(true);
       setSessionError(null);
@@ -37,6 +39,7 @@ const AppContent = () => {
       // Use new storage service to fetch (tries Cloud first)
       getSession(sid).then(data => {
         if (data && data.plan && data.context) {
+            console.log("[App] Session restored:", data.id);
             setResearchPlan(data.plan);
             setResearchContext(data.context);
             // Decide route based on completion status
@@ -61,12 +64,14 @@ const AppContent = () => {
         setLoadingSession(false);
       });
     } else if (tid) {
+        console.log("[App] Found template ID:", tid);
         // Handle Template Link: Load template session, create NEW session
         setLoadingSession(true);
         setSessionError(null);
 
         getSession(tid).then(async (data) => {
             if (data && data.plan && data.context) {
+                console.log("[App] Template loaded, creating new session...");
                 // Create NEW session from this template
                 const newId = Math.random().toString(36).substring(2, 9);
                 const newSession = {
@@ -76,7 +81,12 @@ const AppContent = () => {
                     timestamp: Date.now()
                 };
 
-                await saveSession(newSession);
+                // Try to save, but don't block/fail if it fails (we have the data in memory)
+                try {
+                    await saveSession(newSession);
+                } catch (err) {
+                    console.warn("[App] Failed to save new session initial state:", err);
+                }
                 
                 // Update State
                 setSessionId(newId);
@@ -89,11 +99,13 @@ const AppContent = () => {
 
                 // Route
                 if (data.context.method === 'voice') {
+                    console.log("[App] Routing to INTERVIEW");
                     setCurrentRoute(AppRoute.INTERVIEW);
                 } else {
                     setCurrentRoute(AppRoute.QUESTIONNAIRE);
                 }
             } else {
+                console.error("[App] Template data not found for ID:", tid);
                 setSessionError("无法加载项目模板。链接可能无效。");
             }
         }).catch(e => {
