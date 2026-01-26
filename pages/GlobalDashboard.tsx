@@ -495,7 +495,7 @@ export const GlobalDashboard: React.FC<GlobalDashboardProps> = ({ onBack }) => {
     const { x, y, width, height, index, name } = props;
     
     // Safety check
-    if (!width || !height) return null;
+    if (!width || !height || width <= 0 || height <= 0) return null;
 
     // 1. Smart Font Scaling
     // Calculate fit based on width and character count

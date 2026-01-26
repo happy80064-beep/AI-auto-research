@@ -115,7 +115,9 @@ export const saveProjectReport = async (projectTitle: string, report: ProjectRep
 
   if (db) {
     try {
-      await setDoc(doc(db, REPORT_COLLECTION_NAME, safeId), report);
+      const saveTask = setDoc(doc(db, REPORT_COLLECTION_NAME, safeId), report);
+      const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore report save timed out')), 4000));
+      await Promise.race([saveTask, timeoutTask]);
     } catch (e) {
       console.error("Firestore report save failed", e);
     }
@@ -128,7 +130,11 @@ export const getProjectReport = async (projectTitle: string): Promise<ProjectRep
   if (db) {
     try {
       const docRef = doc(db, REPORT_COLLECTION_NAME, safeId);
-      const docSnap = await getDoc(docRef);
+      const fetchTask = getDoc(docRef);
+      const timeoutTask = new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Firestore report fetch timed out')), 4000));
+      
+      const docSnap = await Promise.race([fetchTask, timeoutTask]);
+      
       if (docSnap.exists()) {
         const data = docSnap.data() as ProjectReport;
         localStorage.setItem(`report_${safeId}`, JSON.stringify(data));
