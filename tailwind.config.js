@@ -51,6 +51,20 @@ export default {
         'ios-hover': '0 8px 24px rgba(0, 0, 0, 0.12)',
         'glow-blue': '0 0 15px rgba(0, 122, 255, 0.4)',
         'glow-green': '0 0 15px rgba(16, 185, 129, 0.3)',
+      },
+      keyframes: {
+        'breathe-blue': {
+          '0%, 100%': { boxShadow: '0 0 10px rgba(0, 122, 255, 0.4)' },
+          '50%': { boxShadow: '0 0 20px rgba(0, 122, 255, 0.8)' },
+        },
+        'breathe-green': {
+          '0%, 100%': { boxShadow: '0 0 10px rgba(52, 199, 89, 0.4)' },
+          '50%': { boxShadow: '0 0 20px rgba(52, 199, 89, 0.8)' },
+        },
+      },
+      animation: {
+        'breathe-blue': 'breathe-blue 2s infinite ease-in-out',
+        'breathe-green': 'breathe-green 2s infinite ease-in-out',
       }
     }
   },
