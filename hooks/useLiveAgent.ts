@@ -31,27 +31,75 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
   // Session  
   const sessionRef = useRef<any>(null);  
   const genAIRef = useRef<GoogleGenerativeAI | null>(null);  
-  // Helpers for PCM audio  
-  const createBlob = (data: Float32Array): { data: string; mimeType: string } => {  
-    const l = data.length;  
-    const int16 = new Int16Array(l);  
-    for (let i = 0; i < l; i++) {  
-      int16[i] = data[i] < 0 ? data[i] * 0x8000 : data[i] * 0x7FFF;  
-    }  
+  // Helpers for WAV encoding
+  const writeString = (view: DataView, offset: number, string: string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  const createWavBlob = (data: Float32Array): { data: string; mimeType: string } => {
+    const sampleRate = 16000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    
+    // Convert Float32 to Int16
+    const l = data.length;
+    const int16 = new Int16Array(l);
+    for (let i = 0; i < l; i++) {
+      // Clamp values
+      const s = Math.max(-1, Math.min(1, data[i]));
+      int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    const buffer = new ArrayBuffer(44 + int16.length * 2);
+    const view = new DataView(buffer);
+
+    /* RIFF identifier */
+    writeString(view, 0, 'RIFF');
+    /* RIFF chunk length */
+    view.setUint32(4, 36 + int16.length * 2, true);
+    /* RIFF type */
+    writeString(view, 8, 'WAVE');
+    /* format chunk identifier */
+    writeString(view, 12, 'fmt ');
+    /* format chunk length */
+    view.setUint32(16, 16, true);
+    /* sample format (raw) */
+    view.setUint16(20, 1, true);
+    /* channel count */
+    view.setUint16(22, numChannels, true);
+    /* sample rate */
+    view.setUint32(24, sampleRate, true);
+    /* byte rate (sample rate * block align) */
+    view.setUint32(28, sampleRate * 2, true);
+    /* block align (channel count * bytes per sample) */
+    view.setUint16(32, numChannels * 2, true);
+    /* bits per sample */
+    view.setUint16(34, bitsPerSample, true);
+    /* data chunk identifier */
+    writeString(view, 36, 'data');
+    /* data chunk length */
+    view.setUint32(40, int16.length * 2, true);
+
+    // Write audio data
+    const pcmData = new Int16Array(buffer, 44);
+    pcmData.set(int16);
+
+    // Convert to Base64
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
       
-    // Manual Base64 Encode  
-    let binary = '';  
-    const bytes = new Uint8Array(int16.buffer);  
-    const len = bytes.byteLength;  
-    for (let i = 0; i < len; i++) {  
-      binary += String.fromCharCode(bytes[i]);  
-    }  
-      
-    return {  
-      data: btoa(binary),  
-      mimeType: 'audio/pcm;rate=16000',  
-    };  
-  };  
+    return {
+      data: btoa(binary),
+      mimeType: 'audio/wav',
+    };
+  };
+
   const decodeAudioData = async (  
     base64: string,  
     ctx: AudioContext  
@@ -105,7 +153,10 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
       scriptProcessorRef.current = processor;  
       // 2. Setup Gemini Live Session  
       try {  
-        const model = genAIRef.current.getGenerativeModel({ model: LIVE_MODEL });  
+        const model = genAIRef.current.getGenerativeModel({ 
+            model: LIVE_MODEL,
+            systemInstruction: systemInstruction 
+        });  
           
         // Start live connection  
         sessionRef.current = await model.startChat({  
@@ -180,11 +231,11 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
                         offset += chunk.length;
                     }
 
-                    const pcmBlob = createBlob(combined);
+                    const wavBlob = createWavBlob(combined);
                     if (sessionRef.current) {
                         try {
                            // Send accumulated audio as inline data
-                           const result = await sessionRef.current.sendMessage([{ inlineData: pcmBlob }]);
+                           const result = await sessionRef.current.sendMessage([{ inlineData: wavBlob }]);
                            const text = result.response.text();
                            if (text) {
                                onTranscriptUpdate(text, false);
