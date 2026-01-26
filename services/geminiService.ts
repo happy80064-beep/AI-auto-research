@@ -6,6 +6,8 @@ const FIREBASE_FUNCTION_URL = 'https://us-central1-gen-lang-client-0856016385.cl
 
 const callFunction = async <T>(name: string, data: any): Promise<T> => {
     console.log(`[GeminiService] Calling function: ${name}`);
+    
+    let lastError: string | null = null;
 
     // 策略 1: 同源代理 (适用于 Zeabur 和 Firebase Hosting)
     // Express server.js 会将 /api/* 请求代理到 Firebase Cloud Functions
@@ -24,9 +26,24 @@ const callFunction = async <T>(name: string, data: any): Promise<T> => {
             console.log(`[GeminiService] Same-origin call succeeded`);
             return result.data;
         }
-        console.warn(`[GeminiService] Same-origin failed: ${response.status}`);
+        
+        const errorText = await response.text();
+        let errorMessage = `Status ${response.status}`;
+        try {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error?.message) {
+                errorMessage = errorJson.error.message;
+            }
+        } catch (e) {
+            // Response was not JSON
+        }
+        
+        console.warn(`[GeminiService] Same-origin failed: ${errorMessage}`);
+        lastError = errorMessage;
+
     } catch (e: any) {
         console.warn(`[GeminiService] Same-origin error: ${e.message}`);
+        lastError = e.message;
     }
 
     // 策略 2: 直接调用 Firebase Cloud Functions (备用)
@@ -51,7 +68,16 @@ const callFunction = async <T>(name: string, data: any): Promise<T> => {
         return result.data;
     } catch (error: any) {
         console.error(`[GeminiService] All strategies failed:`, error);
-        throw new Error(`无法连接到服务器，请稍后重试。错误: ${error.message}`);
+        
+        // Construct a helpful error message
+        let finalMessage = `无法连接到服务器。`;
+        if (lastError) {
+            finalMessage += ` (Server Error: ${lastError})`;
+        } else {
+             finalMessage += ` (Error: ${error.message})`;
+        }
+        
+        throw new Error(finalMessage);
     }
 };
 

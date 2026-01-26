@@ -8,13 +8,6 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-if (!GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY environment variable is not set');
-}
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // CORS middleware
 const corsMiddleware = (req, res, next) => {
@@ -61,6 +54,12 @@ async function withRetry(operation, retries = 3, delay = 2000) {
 // 1. Generate Research Plan
 app.post('/api/generateResearchPlan', async (req, res) => {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+
     const data = req.body.data || req.body;
     const { objectType, industry, demographics, userPersona, objectives, method, questionCount } = data;
 
@@ -154,6 +153,12 @@ app.post('/api/generateResearchPlan', async (req, res) => {
 // 2. Refine Research Plan
 app.post('/api/refineResearchPlan', async (req, res) => {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+
     const data = req.body.data || req.body;
     const { currentPlan, refineInstructions } = data;
 
@@ -202,6 +207,12 @@ app.post('/api/refineResearchPlan', async (req, res) => {
 // 3. Analyze Transcripts
 app.post('/api/analyzeTranscripts', async (req, res) => {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+
     const data = req.body.data || req.body;
     const { transcripts } = data;
 
@@ -250,6 +261,12 @@ app.post('/api/analyzeTranscripts', async (req, res) => {
 // 4. Generate Project Report
 app.post('/api/generateProjectReport', async (req, res) => {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+
     const data = req.body.data || req.body;
     const { projectTitle, sessions } = data;
 
@@ -335,7 +352,7 @@ app.use((req, res) => {
 if (process.argv[1] === __filename) {
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log(`Gemini API Key configured: ${GEMINI_API_KEY ? 'Yes' : 'No'}`);
+    console.log(`Gemini API Key configured: ${process.env.GEMINI_API_KEY ? 'Yes' : 'No'}`);
   });
 }
 

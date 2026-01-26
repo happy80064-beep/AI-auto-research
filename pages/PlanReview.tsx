@@ -55,7 +55,7 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
     const uniqueId = Math.random().toString(36).substring(2, 9);  
     let usePayload = false;
 
-    // 添加超时机制 - 如果 saveSession 超过 4 秒就跳过  
+    // 添加超时机制 - 如果 saveSession 超过 10 秒就跳过 (匹配 storage.ts 的重试逻辑)
     const savePromise = saveSession({  
         id: uniqueId,  
         plan,  
@@ -64,7 +64,7 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
     });  
       
     const timeoutPromise = new Promise((_, reject) =>   
-      setTimeout(() => reject(new Error('Save timeout')), 4000)  
+      setTimeout(() => reject(new Error('Save timeout')), 10000)  
     );  
       
     try {  
@@ -92,7 +92,14 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
   };  
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(shareLink);
+    // Generate a rich invitation text
+    const textToCopy = `【诚挚邀请】AI 语音访谈邀请
+项目：${plan.title}
+我们邀请您参与一项关于 ${context.objectType} 的调研。
+点击链接立即开始：
+${shareLink}`;
+
+    navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -368,61 +375,78 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
 
        {/* Modal */}
        {showLinkModal && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white p-8 rounded-[32px] shadow-2xl max-w-md w-full relative animate-in zoom-in-95 duration-300 ring-1 ring-black/5">
-                <button 
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white p-0 rounded-[24px] shadow-2xl max-w-sm w-full relative animate-in zoom-in-95 duration-300 overflow-hidden ring-1 ring-white/20">
+                {/* Card Header / Banner */}
+                <div className="bg-gradient-to-br from-ios-blue to-purple-600 p-8 text-center relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+                    <div className="relative z-10">
+                         <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-white/20">
+                             <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-1 tracking-tight">{t('review.modal.ready')}</h3>
+                        <p className="text-blue-100 text-xs font-medium opacity-90">AI Interview Invitation</p>
+                    </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-6">
+                    <div className="text-center mb-6">
+                         <h4 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-tight">{plan.title}</h4>
+                         <p className="text-xs text-gray-500 bg-gray-50 py-2 px-3 rounded-lg border border-gray-100 mx-auto inline-block max-w-full truncate">
+                            {shareLink}
+                         </p>
+                    </div>
+
+                    <div className="space-y-3">
+                         <button
+                            onClick={handleCopy}
+                            className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                                copied 
+                                ? 'bg-green-500 text-white shadow-lg shadow-green-200' 
+                                : 'bg-black text-white hover:bg-gray-800 shadow-lg shadow-gray-200 active:scale-[0.98]'
+                            }`}
+                        >
+                            {copied ? (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                    {t('review.modal.copied')}
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                    {t('review.modal.copy')}
+                                </>
+                            )}
+                        </button>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={handleStartNow}
+                                className="py-3 bg-ios-blue/10 hover:bg-ios-blue/20 text-ios-blue rounded-xl font-bold text-sm transition-colors"
+                            >
+                                {t('review.modal.start')}
+                            </button>
+                             <button
+                                onClick={onEnterDashboard}
+                                className="py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-sm transition-colors"
+                            >
+                                {t('review.modal.dashboard')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                 <button 
                     onClick={() => setShowLinkModal(false)}
-                    className="absolute top-5 right-5 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 hover:text-black transition-colors"
+                    className="absolute top-4 right-4 w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
-
-                <div className="text-center mb-8 mt-2">
-                    <div className="w-16 h-16 bg-ios-blue/10 text-ios-blue rounded-2xl flex items-center justify-center mx-auto mb-5">
-                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
-                    </div>
-                    <h3 className="text-2xl font-bold text-black mb-2">{t('review.modal.ready')}</h3>
-                    <p className="text-ios-gray text-sm">{t('review.modal.desc')}</p>
-                </div>
-
-                <div className="bg-gray-50 rounded-xl p-1 flex items-center mb-6 border border-gray-200">
-                    <input 
-                        type="text" 
-                        readOnly 
-                        value={shareLink}
-                        className="bg-transparent border-none text-gray-600 text-sm flex-1 focus:ring-0 outline-none w-full px-3 py-2"
-                    />
-                    <button
-                        onClick={handleCopy}
-                        className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${
-                            copied 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-white text-black border border-gray-200 hover:bg-gray-100'
-                        }`}
-                    >
-                        {copied ? t('review.modal.copied') : t('review.modal.copy')}
-                    </button>
-                </div>
-
-                <div className="space-y-3">
-                    <button
-                        onClick={handleStartNow}
-                        className="w-full py-3.5 bg-ios-blue hover:bg-blue-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
-                    >
-                        {t('review.modal.start')}
-                    </button>
-                    
-                     <button
-                        onClick={onEnterDashboard}
-                        className="w-full py-3.5 bg-transparent text-ios-blue hover:bg-blue-50 rounded-xl font-bold transition-colors"
-                    >
-                        {t('review.modal.dashboard')}
-                    </button>
-                </div>
             </div>
          </div>
        )}

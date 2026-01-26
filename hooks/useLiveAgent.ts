@@ -199,7 +199,14 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
         sessionRef.current = await model.startChat({  
           history: [],  
           generationConfig: {  
-            temperature: 0.7,  
+            temperature: 0.7,
+            speechConfig: voiceName ? {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voiceName
+                }
+              }
+            } : undefined, 
           },  
         });  
         setIsConnected(true);  
