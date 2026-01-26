@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getAnalytics } from "firebase/analytics";
 
@@ -20,7 +20,16 @@ let analytics: any = null;
 
 try {
     const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    
+    // Use initializeFirestore to configure settings for better stability
+    db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        }),
+        // Force long polling to avoid WebSocket issues in some network environments
+        experimentalForceLongPolling: true,
+    });
+
     // Initialize Functions, default region is us-central1. 
     // If you change the region in functions/src/index.ts, change it here too.
     functions = getFunctions(app, 'us-central1');
