@@ -6,10 +6,11 @@ const LIVE_MODEL = 'gemini-2.0-flash';
 
 interface UseLiveAgentProps {
   systemInstruction: string;  
-  voiceName?: string;  
+  voiceName?: string;
+  language?: 'zh' | 'en';
   onTranscriptUpdate: (text: string, isUser: boolean) => void;  
 }  
-export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate }: UseLiveAgentProps) => {  
+export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', onTranscriptUpdate }: UseLiveAgentProps) => {  
   const [isConnected, setIsConnected] = useState(false);  
   const [isSpeaking, setIsSpeaking] = useState(false);  
   const [volume, setVolume] = useState(0);  
@@ -17,7 +18,9 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
   const inputContextRef = useRef<AudioContext | null>(null);  
   const outputContextRef = useRef<AudioContext | null>(null);  
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);  
-  const streamRef = useRef<MediaStream | null>(null);  
+  const streamRef = useRef<MediaStream | null>(null);
+  const recognitionRef = useRef<any>(null);
+  
     
   // Playback queue  
   const nextStartTimeRef = useRef<number>(0);  
@@ -122,7 +125,41 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
     return buffer;  
   };  
   const connect = async () => {  
-    try {  
+    try {
+      // 0. Setup Speech Recognition (for User Transcript)
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = language === 'zh' ? 'zh-CN' : 'en-US';
+
+        recognition.onresult = (event: any) => {
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    const transcript = event.results[i][0].transcript;
+                    if (transcript.trim()) {
+                        onTranscriptUpdate(transcript, true);
+                    }
+                }
+            }
+        };
+        
+        recognition.onerror = (event: any) => {
+             // Ignore no-speech errors as they are common in continuous mode
+             if (event.error !== 'no-speech') {
+                console.warn("Speech recognition error", event.error);
+             }
+        };
+
+        try {
+            recognition.start();
+            recognitionRef.current = recognition;
+        } catch (e) {
+            console.warn("Failed to start speech recognition:", e);
+        }
+      }
+
       if (!genAIRef.current) {  
         // API Key should be passed from environment (Vite)
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';  
@@ -256,7 +293,11 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
     }  
   };  
   const disconnect = async () => {  
-    try {  
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }  
       if (streamRef.current) {  
         streamRef.current.getTracks().forEach(t => t.stop());  
       }  

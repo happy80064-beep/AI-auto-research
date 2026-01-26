@@ -42,6 +42,7 @@ export const Interview: React.FC<InterviewProps> = ({ plan, onFinish }) => {
   const { connect, disconnect, isConnected, isSpeaking, volume } = useLiveAgent({
     systemInstruction: plan.systemInstruction,
     voiceName: plan.voiceSettings?.voiceName,
+    language,
     onTranscriptUpdate: handleTranscriptUpdate
   });
 
