@@ -152,6 +152,18 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
              }
         };
 
+        recognition.onend = () => {
+            // Restart recognition if it stops unexpectedly while the session is active
+            if (recognitionRef.current) {
+                try {
+                    recognition.start();
+                    console.log("Speech recognition restarted");
+                } catch (e) {
+                    console.warn("Failed to restart speech recognition:", e);
+                }
+            }
+        };
+
         try {
             recognition.start();
             recognitionRef.current = recognition;

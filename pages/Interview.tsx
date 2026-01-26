@@ -16,26 +16,17 @@ export const Interview: React.FC<InterviewProps> = ({ plan, onFinish }) => {
 
   const handleTranscriptUpdate = (text: string, isUser: boolean) => {
     setTranscript(prev => {
-        const lastItem = prev[prev.length - 1];
+        // Since we receive full messages/turns from both SpeechRecognition and Gemini,
+        // we should always create a new transcript item instead of merging.
+        // This prevents different turns from being combined into one giant block.
         const role = isUser ? 'user' : 'model';
-        
-        if (lastItem && lastItem.role === role) {
-            const updatedLast = { 
-                ...lastItem, 
-                text: lastItem.text + text 
-            };
-            const newTranscript = [...prev.slice(0, -1), updatedLast];
-            transcriptRef.current = newTranscript;
-            return newTranscript;
-        } else {
-            const newTranscript = [...prev, {
-                role: role,
-                text,
-                timestamp: Date.now()
-            } as TranscriptItem];
-            transcriptRef.current = newTranscript;
-            return newTranscript;
-        }
+        const newTranscript = [...prev, {
+            role: role,
+            text,
+            timestamp: Date.now()
+        } as TranscriptItem];
+        transcriptRef.current = newTranscript;
+        return newTranscript;
     });
   };
 
