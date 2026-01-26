@@ -81,7 +81,7 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
         if (!apiKey) {  
           throw new Error('GEMINI_API_KEY is not configured. Please set VITE_GEMINI_API_KEY in your environment.');  
         }  
-        genAIRef.current = new GoogleGenerativeAI({ apiKey });  
+        genAIRef.current = new GoogleGenerativeAI(apiKey);  
       }  
       // 1. Setup Audio Inputs  
       const stream = await navigator.mediaDevices.getUserMedia({   
