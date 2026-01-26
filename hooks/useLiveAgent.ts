@@ -8,7 +8,7 @@ interface UseLiveAgentProps {
   systemInstruction: string;  
   voiceName?: string;
   language?: 'zh' | 'en';
-  onTranscriptUpdate: (text: string, isUser: boolean) => void;  
+  onTranscriptUpdate: (text: string, isUser: boolean, isInterim?: boolean) => void;  
 }  
 export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', onTranscriptUpdate }: UseLiveAgentProps) => {  
   const [isConnected, setIsConnected] = useState(false);  
@@ -136,15 +136,23 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
 
         recognition.onresult = (event: any) => {
             let finalTranscript = '';
+            let interimTranscript = '';
+            
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
                     finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
                 }
             }
             
             if (finalTranscript.trim()) {
                 console.log("User Speech Final:", finalTranscript);
-                onTranscriptUpdate(finalTranscript, true);
+                onTranscriptUpdate(finalTranscript, true, false);
+            }
+            
+            if (interimTranscript.trim()) {
+                onTranscriptUpdate(interimTranscript, true, true);
             }
         };
         

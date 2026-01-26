@@ -47,6 +47,7 @@ export interface TranscriptItem {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+  isInterim?: boolean;
 }
 
 export interface AnalysisResult {

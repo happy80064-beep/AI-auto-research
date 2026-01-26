@@ -95,16 +95,47 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
     setShowLinkModal(true);  
   };  
 
-  const handleCopy = () => {
-    // Generate a rich invitation text
+  const handleCopy = async () => {
+    // Generate a rich invitation text (Plain Text Version)
     const textToCopy = `【诚挚邀请】AI 语音访谈邀请
 项目：${plan.title}
 我们邀请您参与一项关于 ${context.objectType} 的调研。
 点击链接立即开始：
 ${shareLink}`;
 
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
+    // Generate HTML version with short link text to hide long payload links in rich text apps
+    const htmlToCopy = `
+      <html>
+        <body>
+          <p><strong>【诚挚邀请】AI 语音访谈邀请</strong></p>
+          <p>项目：${plan.title}</p>
+          <p>我们邀请您参与一项关于 ${context.objectType} 的调研。</p>
+          <p><a href="${shareLink}">点击这里立即开始访谈</a></p>
+        </body>
+      </html>
+    `;
+
+    try {
+        if (navigator.clipboard && navigator.clipboard.write) {
+            const textBlob = new Blob([textToCopy], { type: 'text/plain' });
+            const htmlBlob = new Blob([htmlToCopy], { type: 'text/html' });
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/plain': textBlob,
+                    'text/html': htmlBlob,
+                })
+            ]);
+        } else {
+            await navigator.clipboard.writeText(textToCopy);
+        }
+        setCopied(true);
+    } catch (err) {
+        console.error("Clipboard write failed", err);
+        // Fallback
+        navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+    }
+
     setTimeout(() => setCopied(false), 2000);
   };
 
