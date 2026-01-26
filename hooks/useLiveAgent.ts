@@ -131,17 +131,20 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
-        recognition.interimResults = false;
+        recognition.interimResults = true; // Enable interim results for faster feedback
         recognition.lang = language === 'zh' ? 'zh-CN' : 'en-US';
 
         recognition.onresult = (event: any) => {
+            let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
-                    const transcript = event.results[i][0].transcript;
-                    if (transcript.trim()) {
-                        onTranscriptUpdate(transcript, true);
-                    }
+                    finalTranscript += event.results[i][0].transcript;
                 }
+            }
+            
+            if (finalTranscript.trim()) {
+                console.log("User Speech Final:", finalTranscript);
+                onTranscriptUpdate(finalTranscript, true);
             }
         };
         

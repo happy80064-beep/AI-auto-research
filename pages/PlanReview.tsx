@@ -400,7 +400,7 @@ ${shareLink}`;
                     <div className="text-center mb-6">
                          <h4 className="font-bold text-gray-900 mb-2 line-clamp-2 leading-tight">{plan.title}</h4>
                          <p className="text-xs text-gray-500 bg-gray-50 py-2 px-3 rounded-lg border border-gray-100 mx-auto inline-block max-w-full truncate">
-                            {shareLink}
+                            {shareLink.length > 50 ? shareLink.substring(0, 30) + '...' + shareLink.substring(shareLink.length - 10) : shareLink}
                          </p>
                     </div>
 
