@@ -14,6 +14,26 @@ export interface SessionData {
 const COLLECTION_NAME = 'insightflow_sessions';
 const REPORT_COLLECTION_NAME = 'insightflow_reports';
 
+// Helper to retry Firestore operations on transient network errors
+const retryOperation = async <T>(operation: () => Promise<T>, maxRetries = 3, delayMs = 1000): Promise<T> => {
+    let lastError: any;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await operation();
+        } catch (e: any) {
+            const isOffline = e?.code === 'unavailable' || e?.message?.includes('offline') || e?.message?.includes('network');
+            if (isOffline && i < maxRetries - 1) {
+                console.warn(`[Storage] Operation failed (attempt ${i + 1}/${maxRetries}), retrying in ${delayMs}ms...`, e);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                delayMs *= 2; // Exponential backoff
+                continue;
+            }
+            throw e;
+        }
+    }
+    throw lastError;
+};
+
 export const saveSession = async (data: SessionData) => {
   // 1. Always save to LocalStorage for redundancy/local speed
   try {
@@ -26,11 +46,13 @@ export const saveSession = async (data: SessionData) => {
   if (db) {
     try {
       console.log(`[Storage] Starting Firestore save for ${data.id}...`);
-      // Add a 4-second timeout specifically for the network request
-      const saveTask = setDoc(doc(db, COLLECTION_NAME, data.id), data);
-      const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore operation timed out')), 4000));
-      
-      await Promise.race([saveTask, timeoutTask]);
+      // Retry the setDoc operation
+      await retryOperation(async () => {
+          // Add a 10-second timeout specifically for the network request (increased from 4s)
+          const saveTask = setDoc(doc(db, COLLECTION_NAME, data.id), data);
+          const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore operation timed out')), 10000));
+          await Promise.race([saveTask, timeoutTask]);
+      });
       console.log(`[Storage] Firestore save complete for ${data.id}`);
     } catch (e) {
       console.error("Firestore save failed", e);
@@ -44,7 +66,9 @@ export const getSession = async (id: string): Promise<SessionData | null> => {
   if (db) {
     try {
       const docRef = doc(db, COLLECTION_NAME, id);
-      const docSnap = await getDoc(docRef);
+      // Retry getDoc to handle initial connection flakiness
+      const docSnap = await retryOperation(() => getDoc(docRef));
+      
       if (docSnap.exists()) {
         const data = docSnap.data() as SessionData;
         // Sync back to local
