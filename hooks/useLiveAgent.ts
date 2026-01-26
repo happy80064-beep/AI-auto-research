@@ -41,6 +41,33 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
     }
   };
 
+  // Text-to-Speech Helper
+  const speak = (text: string) => {
+    if (!window.speechSynthesis) return;
+    
+    // Stop any current speech to avoid overlap
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    // Set language
+    utterance.lang = language === 'zh' ? 'zh-CN' : 'en-US';
+    
+    // Simple heuristic for voice gender/tone (optional)
+    // We can't easily match the "Gemini" voices, but we can try to find a decent system voice.
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        // Prefer a Google voice if available (often better quality on Chrome)
+        const preferredVoice = voices.find(v => 
+            v.lang === utterance.lang && v.name.includes('Google')
+        );
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        }
+    }
+
+    window.speechSynthesis.speak(utterance);
+  };
+
   const createWavBlob = (data: Float32Array): { data: string; mimeType: string } => {
     const sampleRate = 16000;
     const numChannels = 1;
@@ -242,7 +269,8 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
                 "访谈现在开始。请根据你的系统指令，主动向用户打招呼，自我介绍，并开始第一个问题的提问。"  
               );  
               const responseText = result.response.text();  
-              onTranscriptUpdate(responseText, false);  
+              onTranscriptUpdate(responseText, false);
+              speak(responseText);  
             } catch (err) {  
               console.error("Error sending initial message:", err);  
             }  
@@ -306,6 +334,7 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
                            const text = result.response.text();
                            if (text) {
                                onTranscriptUpdate(text, false);
+                               speak(text);
                            }
                         } catch (err: any) {
                             console.error("Error sending accumulated audio:", err);

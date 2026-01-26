@@ -96,12 +96,36 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
   };  
 
   const handleCopy = async () => {
+    let finalLink = shareLink;
+    
+    // Lazy Retry: If currently using a payload link (long) and we are online, 
+    // try to save to Firestore again to get a short link.
+    if (shareLink.includes('payload') && generatedId && navigator.onLine) {
+        try {
+            console.log("Attempting to upgrade to short link...");
+            const success = await saveSession({
+                id: generatedId,
+                plan,
+                context,
+                timestamp: Date.now()
+            });
+            
+            if (success) {
+                console.log("Upgrade successful!");
+                finalLink = getTemplateLink(generatedId);
+                setShareLink(finalLink); // Update state for UI
+            }
+        } catch (e) {
+            console.warn("Upgrade to short link failed, sticking to payload link", e);
+        }
+    }
+
     // Generate a rich invitation text (Plain Text Version)
     const textToCopy = `【诚挚邀请】AI 语音访谈邀请
 项目：${plan.title}
 我们邀请您参与一项关于 ${context.objectType} 的调研。
 点击链接立即开始：
-${shareLink}`;
+${finalLink}`;
 
     // Generate HTML version with short link text to hide long payload links in rich text apps
     const htmlToCopy = `
@@ -110,7 +134,7 @@ ${shareLink}`;
           <p><strong>【诚挚邀请】AI 语音访谈邀请</strong></p>
           <p>项目：${plan.title}</p>
           <p>我们邀请您参与一项关于 ${context.objectType} 的调研。</p>
-          <p><a href="${shareLink}">点击这里立即开始访谈</a></p>
+          <p><a href="${finalLink}">点击这里立即开始访谈</a></p>
         </body>
       </html>
     `;
