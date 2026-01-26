@@ -1,7 +1,10 @@
-import { useState, useRef } from 'react';  
-import { GoogleGenerativeAI } from '@google/generative-ai';  
-const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';  
-interface UseLiveAgentProps {  
+import { useState, useRef } from 'react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+// Use the stable Gemini 2.0 Flash model which supports multimodal input
+const LIVE_MODEL = 'gemini-2.0-flash';
+
+interface UseLiveAgentProps {
   systemInstruction: string;  
   voiceName?: string;  
   onTranscriptUpdate: (text: string, isUser: boolean) => void;  
@@ -19,6 +22,12 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
   // Playback queue  
   const nextStartTimeRef = useRef<number>(0);  
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());  
+  
+  // VAD & Buffer
+  const audioAccumulatorRef = useRef<Float32Array[]>([]);
+  const lastSpeechTimeRef = useRef<number>(0);
+  const isCollectingAudioRef = useRef<boolean>(false);
+
   // Session  
   const sessionRef = useRef<any>(null);  
   const genAIRef = useRef<GoogleGenerativeAI | null>(null);  
@@ -126,22 +135,67 @@ export const useLiveAgent = ({ systemInstruction, voiceName, onTranscriptUpdate 
         throw err;  
       }  
       // 3. Start Streaming Audio  
-      processor.onaudioprocess = (e) => {  
+      processor.onaudioprocess = async (e) => {  
         const inputData = e.inputBuffer.getChannelData(0);  
+        const dataCopy = new Float32Array(inputData); // Clone data
           
         // Simple Volume Meter  
         let sum = 0;  
-        for(let i = 0; i < inputData.length; i++) {  
-          sum += inputData[i] * inputData[i];  
+        for(let i = 0; i < dataCopy.length; i++) {  
+          sum += dataCopy[i] * dataCopy[i];  
         }  
-        setVolume(Math.sqrt(sum / inputData.length));  
-        // Send audio to Gemini  
-        const pcmBlob = createBlob(inputData);  
-        if (sessionRef.current) {  
-          sessionRef.current.sendMessage(pcmBlob).catch((err: any) => {  
-            console.error("Error sending audio:", err);  
-          });  
-        }  
+        const rms = Math.sqrt(sum / dataCopy.length);
+        setVolume(rms);
+        
+        // VAD Logic
+        const SPEECH_THRESHOLD = 0.01;
+        const SILENCE_DURATION = 1500; // 1.5s
+
+        if (rms > SPEECH_THRESHOLD) {
+             if (!isCollectingAudioRef.current) {
+                 isCollectingAudioRef.current = true;
+                 // console.log("Speech detected, starting collection...");
+             }
+             lastSpeechTimeRef.current = Date.now();
+        }
+
+        if (isCollectingAudioRef.current) {
+            audioAccumulatorRef.current.push(dataCopy);
+
+            // Check for silence
+            if (Date.now() - lastSpeechTimeRef.current > SILENCE_DURATION) {
+                // console.log("Silence detected, sending audio...");
+                isCollectingAudioRef.current = false;
+                
+                // Process and send
+                const chunks = audioAccumulatorRef.current;
+                audioAccumulatorRef.current = []; // Clear immediately
+                
+                if (chunks.length > 0) {
+                    const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+                    const combined = new Float32Array(totalLength);
+                    let offset = 0;
+                    for(const chunk of chunks) {
+                        combined.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+
+                    const pcmBlob = createBlob(combined);
+                    if (sessionRef.current) {
+                        try {
+                           // Send accumulated audio as inline data
+                           const result = await sessionRef.current.sendMessage([{ inlineData: pcmBlob }]);
+                           const text = result.response.text();
+                           if (text) {
+                               onTranscriptUpdate(text, false);
+                           }
+                        } catch (err: any) {
+                            console.error("Error sending accumulated audio:", err);
+                        }
+                    }
+                }
+            }
+        }
       };  
       source.connect(processor);  
       processor.connect(inputCtx.destination);  
