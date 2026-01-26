@@ -128,13 +128,15 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
 ${finalLink}`;
 
     // Generate HTML version with short link text to hide long payload links in rich text apps
+    // We explicitly show the link text because some apps (like WeChat) strip <a> tags but keep text
     const htmlToCopy = `
       <html>
         <body>
           <p><strong>【诚挚邀请】AI 语音访谈邀请</strong></p>
           <p>项目：${plan.title}</p>
           <p>我们邀请您参与一项关于 ${context.objectType} 的调研。</p>
-          <p><a href="${finalLink}">点击这里立即开始访谈</a></p>
+          <p>点击链接立即开始访谈：</p>
+          <p><a href="${finalLink}">${finalLink}</a></p>
         </body>
       </html>
     `;
