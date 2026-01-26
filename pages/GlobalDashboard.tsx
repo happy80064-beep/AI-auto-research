@@ -30,6 +30,23 @@ const HEATMAP_COLORS = [
     '#5E5CE6'  // Purple
 ];
 
+// Helper to count messages/answers based on session type
+const getMessageCount = (session: SessionData) => {
+    if (!session.transcript) return 0;
+    
+    if (session.context.method === 'voice') {
+        // Voice: Count valid dialogue lines (User + AI)
+        // Format: ROLE: text
+        return session.transcript.split('\n').filter(line => line.trim().length > 0).length;
+    } else {
+        // Questionnaire: Count answers
+        // Format: Question (...): ...\nAnswer: ...\n
+        // We count occurrences of "Answer:" at the start of a line
+        const answers = session.transcript.match(/^Answer:/gm);
+        return answers ? answers.length : 0;
+    }
+};
+
 // --- Advanced Markdown Parser Helper ---
 const renderMarkdownContent = (content: string | undefined | null) => {
     if (!content) return null;
@@ -766,7 +783,7 @@ export const GlobalDashboard: React.FC<GlobalDashboardProps> = ({ onBack }) => {
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-500 flex items-center gap-2">
                                                 <svg className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-                                                {s.transcript ? (s.transcript as any).length || 20 : 0}
+                                                {getMessageCount(s)}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <button 
