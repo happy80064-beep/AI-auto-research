@@ -267,7 +267,7 @@ export const Setup: React.FC<SetupProps> = ({ onDraftGenerated, onBack, initialC
                                 onClick={() => setContext({ ...context, method: 'voice' })}
                                 className={`flex-1 py-4 px-4 rounded-xl border-2 transition-all duration-300 font-bold text-sm md:text-base flex items-center justify-center gap-2 ${
                                     context.method === 'voice'
-                                    ? 'bg-ios-blue text-white border-transparent shadow-lg shadow-blue-200'
+                                    ? 'bg-ios-blue text-white border-transparent animate-breathe-blue'
                                     : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300 hover:bg-gray-50'
                                 }`}
                             >
@@ -280,7 +280,7 @@ export const Setup: React.FC<SetupProps> = ({ onDraftGenerated, onBack, initialC
                                 onClick={() => setContext({ ...context, method: 'questionnaire' })}
                                 className={`flex-1 py-4 px-4 rounded-xl border-2 transition-all duration-300 font-bold text-sm md:text-base flex items-center justify-center gap-2 ${
                                     context.method === 'questionnaire'
-                                    ? 'bg-ios-green text-white border-transparent shadow-lg shadow-green-200'
+                                    ? 'bg-ios-green text-white border-transparent animate-breathe-green'
                                     : 'bg-white text-gray-500 border-gray-100 hover:border-gray-300 hover:bg-gray-50'
                                 }`}
                             >
@@ -317,7 +317,7 @@ export const Setup: React.FC<SetupProps> = ({ onDraftGenerated, onBack, initialC
                     className={`w-full py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform active:scale-[0.98] ${
                         loading
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-ios-blue text-white hover:bg-blue-600 shadow-ios hover:shadow-lg'
+                        : 'bg-ios-blue text-white hover:bg-blue-600 animate-breathe-blue'
                     }`}
                     >
                     {loading ? (

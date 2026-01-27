@@ -1,22 +1,21 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 admin.initializeApp();
 
 // Helper for CORS headers
 const setCorsHeaders = (res: functions.Response) => {
-    res.set('Access-Control-Allow-Origin', '*'); // Allow all origins for debugging
+    res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.set('Access-Control-Max-Age', '3600');
-    // res.set('Access-Control-Allow-Credentials', 'true'); // Cannot use Credentials with '*' origin
 };
 
 // Configuration
-const ORCHESTRATOR_MODEL = 'gemini-3-pro-preview';
-const ANALYSIS_MODEL = 'gemini-3-pro-preview';
-const REGION = 'us-central1'; // Or your preferred region
+const ORCHESTRATOR_MODEL = 'gemini-2.0-flash';
+const ANALYSIS_MODEL = 'gemini-2.0-flash';
+const REGION = 'us-central1';
 
 // Helper to clean potential markdown fencing
 const cleanJson = (text: string) => {
@@ -47,13 +46,9 @@ async function withRetry<T>(operation: () => Promise<T>, retries = 3, delay = 20
 }
 
 // Initialize Gemini
-// Note: In production, set GEMINI_API_KEY using: firebase functions:config:set gemini.key="YOUR_KEY"
-// Then access it via functions.config().gemini.key
 const getAiClient = () => {
-    // Try getting from Firebase Config (Production)
     let apiKey = functions.config().gemini?.key;
     
-    // Fallback to Environment Variable (Local/Dev)
     if (!apiKey) {
         apiKey = process.env.GEMINI_API_KEY;
     }
@@ -61,7 +56,7 @@ const getAiClient = () => {
     if (!apiKey) {
         throw new Error('GEMINI_API_KEY is not set. Please run: firebase functions:config:set gemini.key="YOUR_KEY"');
     }
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenerativeAI(apiKey);
 };
 
 // 1. Generate Research Plan
@@ -73,9 +68,9 @@ export const generateResearchPlan = functions.region(REGION).https.onRequest(asy
     }
 
     try {
-        const data = req.body.data || req.body; // Support both direct body and callable format
+        const data = req.body.data || req.body;
         const { objectType, industry, demographics, userPersona, objectives, method, questionCount } = data;
-        const ai = getAiClient();
+        const genAI = getAiClient();
 
         const prompt = `
             角色: 资深用户研究专家 & 商业分析师。
@@ -104,7 +99,7 @@ export const generateResearchPlan = functions.region(REGION).https.onRequest(asy
                   "text": "String, 具体问题文本",
                   "type": "String, 必须是 'open' 或 'scale' 或 'choice'",
                   "intent": "String, 该问题的调研意图",
-                  "scaleLabels": ["String", "String"] // 仅当 type 为 scale 时需要，分别代表1分和5分的含义
+                  "scaleLabels": ["String", "String"]
                 }
               ]
             }
@@ -113,12 +108,12 @@ export const generateResearchPlan = functions.region(REGION).https.onRequest(asy
             1. **逻辑大纲**: 设计严密的调研逻辑。
             2. **分析体系**: 预先定义分析维度。
             3. **话术/系统指令**: 
-               - 角色名称是“InsightFlow AI 访谈专家”。
+               - 角色名称是"InsightFlow AI 访谈专家"。
                - 必须使用中文。
                - **关键语气要求**: 极度自然、生活化，拒绝僵硬的机械感。
                - 针对 ${objectType} 调整具体风格。
                - 包含主动开场白、自我介绍。
-               - 当所有预设问题都问完，或用户明确表示不想继续时，必须说出“访谈结束”并致谢。
+               - 当所有预设问题都问完，或用户明确表示不想继续时，必须说出"访谈结束"并致谢。
             4. **问题设计**: 
                - 严控题目数量在 ${questionCount || 10} 题左右。
                - 问题类型 (type) 只能是 'open', 'scale', 'choice' 之一。
@@ -127,17 +122,19 @@ export const generateResearchPlan = functions.region(REGION).https.onRequest(asy
             IMPORTANT: Output ONLY valid JSON.
           `;
 
-            const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-                model: ORCHESTRATOR_MODEL,
-                contents: prompt,
-                config: { responseMimeType: "application/json" }
-            }));
+            const model = genAI.getGenerativeModel({ model: ORCHESTRATOR_MODEL });
+            const response = await withRetry(() => 
+              model.generateContent({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+              })
+            );
 
-            if (!response.text) throw new Error("No response from Gemini");
+            const responseText = response.response.text();
+            if (!responseText) throw new Error("No response from Gemini");
             
-            const plan = JSON.parse(cleanJson(response.text));
+            const plan = JSON.parse(cleanJson(responseText));
             
-            // Inject Mandatory Identity Questions (Backend side)
             const IDENTITY_QUESTIONS = [
               { id: 'id_job', text: '为了更好地了解您，请问您的职业是什么？', type: 'open', intent: '身份确认-职业' },
               { id: 'id_industry', text: '您目前所在的行业是？', type: 'open', intent: '身份确认-行业' },
@@ -147,7 +144,6 @@ export const generateResearchPlan = functions.region(REGION).https.onRequest(asy
 
             plan.questions = [...IDENTITY_QUESTIONS, ...plan.questions];
             
-            // Inject default voice settings
             plan.voiceSettings = {
                 gender: 'female',
                 language: 'zh',
@@ -155,7 +151,7 @@ export const generateResearchPlan = functions.region(REGION).https.onRequest(asy
                 voiceName: 'Zephyr'
             };
 
-            res.json({ data: plan }); // Return in callable format
+            res.json({ data: plan });
 
     } catch (error: any) {
         console.error("Error generating plan:", error);
@@ -174,9 +170,8 @@ export const refineResearchPlan = functions.region(REGION).https.onRequest(async
     try {
         const data = req.body.data || req.body;
         const { currentPlan, refineInstructions } = data;
-        const ai = getAiClient();
+        const genAI = getAiClient();
 
-            // Separate fixed questions logic (simplified for backend)
             const fixedIds = ['id_job', 'id_industry', 'id_age', 'id_gender'];
             const fixedQuestions = currentPlan.questions.filter((q: any) => fixedIds.includes(q.id));
             const dynamicQuestions = currentPlan.questions.filter((q: any) => !fixedIds.includes(q.id));
@@ -190,20 +185,23 @@ export const refineResearchPlan = functions.region(REGION).https.onRequest(async
 
             请根据修改意见，重新调整逻辑大纲、分析体系、系统指令和问题列表。
             必须保持 JSON 结构与输入完全一致。
-            **特别注意**: 如果修改涉及系统指令，请务必保留“自然、生活化”的语气设定。
+            **特别注意**: 如果修改涉及系统指令，请务必保留"自然、生活化"的语气设定。
             
             请输出纯 JSON 格式。
             IMPORTANT: Output ONLY valid JSON.
           `;
 
-            const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-                model: ORCHESTRATOR_MODEL,
-                contents: prompt,
-                config: { responseMimeType: "application/json" }
-            }));
+            const model = genAI.getGenerativeModel({ model: ORCHESTRATOR_MODEL });
+            const response = await withRetry(() =>
+              model.generateContent({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+              })
+            );
 
-            if (!response.text) throw new Error("No response from Gemini");
-            const refinedPlan = JSON.parse(cleanJson(response.text));
+            const responseText = response.response.text();
+            if (!responseText) throw new Error("No response from Gemini");
+            const refinedPlan = JSON.parse(cleanJson(responseText));
             
             refinedPlan.questions = [...fixedQuestions, ...refinedPlan.questions];
             refinedPlan.voiceSettings = currentPlan.voiceSettings;
@@ -227,7 +225,7 @@ export const analyzeTranscripts = functions.region(REGION).https.onRequest(async
     try {
         const data = req.body.data || req.body;
         const { transcripts } = data;
-        const ai = getAiClient();
+        const genAI = getAiClient();
 
             const prompt = `
             作为首席数据分析师，请深入分析以下访谈/问卷记录。
@@ -251,14 +249,17 @@ export const analyzeTranscripts = functions.region(REGION).https.onRequest(async
             ${transcripts}
           `;
 
-            const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-                model: ANALYSIS_MODEL,
-                contents: prompt,
-                config: { responseMimeType: "application/json" }
-            }));
+            const model = genAI.getGenerativeModel({ model: ANALYSIS_MODEL });
+            const response = await withRetry(() =>
+              model.generateContent({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+              })
+            );
 
-            if (!response.text) throw new Error("No analysis generated");
-            const result = JSON.parse(cleanJson(response.text));
+            const responseText = response.response.text();
+            if (!responseText) throw new Error("No analysis generated");
+            const result = JSON.parse(cleanJson(responseText));
             
             res.json({ data: result });
 
@@ -279,7 +280,7 @@ export const generateProjectReport = functions.region(REGION).https.onRequest(as
     try {
         const data = req.body.data || req.body;
         const { projectTitle, sessions } = data;
-        const ai = getAiClient();
+        const genAI = getAiClient();
 
             const aggregatedContent = sessions
                 .filter((s: any) => s.transcript)
@@ -325,14 +326,17 @@ export const generateProjectReport = functions.region(REGION).https.onRequest(as
             ${aggregatedContent}
           `;
 
-            const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-                model: ORCHESTRATOR_MODEL,
-                contents: prompt,
-                config: { responseMimeType: "application/json" }
-            }));
+            const model = genAI.getGenerativeModel({ model: ORCHESTRATOR_MODEL });
+            const response = await withRetry(() =>
+              model.generateContent({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: "application/json" }
+              })
+            );
 
-            if (!response.text) throw new Error("Report generation failed");
-            const rawReport = JSON.parse(cleanJson(response.text));
+            const responseText = response.response.text();
+            if (!responseText) throw new Error("Report generation failed");
+            const rawReport = JSON.parse(cleanJson(responseText));
             
             res.json({
                 data: {

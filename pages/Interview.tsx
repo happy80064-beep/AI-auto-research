@@ -14,34 +14,84 @@ export const Interview: React.FC<InterviewProps> = ({ plan, onFinish }) => {
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const transcriptRef = useRef<TranscriptItem[]>([]);
 
-  const handleTranscriptUpdate = (text: string, isUser: boolean) => {
+  const handleTranscriptUpdate = (text: string, isUser: boolean, isInterim: boolean = false) => {
     setTranscript(prev => {
-        const lastItem = prev[prev.length - 1];
         const role = isUser ? 'user' : 'model';
+        const lastItem = prev[prev.length - 1];
+        const now = Date.now();
         
-        if (lastItem && lastItem.role === role) {
-            const updatedLast = { 
-                ...lastItem, 
-                text: lastItem.text + text 
-            };
-            const newTranscript = [...prev.slice(0, -1), updatedLast];
-            transcriptRef.current = newTranscript;
-            return newTranscript;
-        } else {
+        // 1. Handling for Interim Updates (User only)
+        if (isInterim && isUser) {
+            // If the last item was also an interim user update, REPLACE it
+            // (Interim results are cumulative for the current utterance)
+            if (lastItem && lastItem.role === 'user' && lastItem.isInterim) {
+                const updatedLast = {
+                    ...lastItem,
+                    text: text, 
+                    timestamp: now,
+                    isInterim: true
+                };
+                const newTranscript = [...prev.slice(0, -1), updatedLast];
+                transcriptRef.current = newTranscript;
+                return newTranscript;
+            }
+            // If last item was final or model, ADD new interim item
             const newTranscript = [...prev, {
-                role: role,
+                role: 'user',
                 text,
-                timestamp: Date.now()
+                timestamp: now,
+                isInterim: true
             } as TranscriptItem];
             transcriptRef.current = newTranscript;
             return newTranscript;
         }
+
+        // 2. Handling for Final Updates (User)
+        if (!isInterim && isUser) {
+             // If we have a pending interim item, Replace it with final
+             if (lastItem && lastItem.role === 'user' && lastItem.isInterim) {
+                 const updatedLast = {
+                     ...lastItem,
+                     text: text, 
+                     timestamp: now,
+                     isInterim: false
+                 };
+                 const newTranscript = [...prev.slice(0, -1), updatedLast];
+                 transcriptRef.current = newTranscript;
+                 return newTranscript;
+             }
+             
+             // Normal merge logic for consecutive final utterances (within 3s)
+             if (lastItem && lastItem.role === 'user' && !lastItem.isInterim && (now - lastItem.timestamp < 3000)) {
+                const updatedLast = {
+                    ...lastItem,
+                    text: lastItem.text + (lastItem.text.endsWith(' ') ? '' : ' ') + text,
+                    timestamp: now
+                };
+                const newTranscript = [...prev.slice(0, -1), updatedLast];
+                transcriptRef.current = newTranscript;
+                return newTranscript;
+            }
+        }
+
+        // 3. Default / Model logic (Always Final)
+        const newTranscript = [...prev, {
+            role: role,
+            text,
+            timestamp: now,
+            isInterim: false
+        } as TranscriptItem];
+        transcriptRef.current = newTranscript;
+        return newTranscript;
     });
   };
 
   const { connect, disconnect, isConnected, isSpeaking, volume } = useLiveAgent({
-    systemInstruction: plan.systemInstruction,
+    systemInstruction: plan.voiceSettings 
+        ? `${plan.systemInstruction}\n\n[Voice/Tone Instruction]\nPlease speak in a ${plan.voiceSettings.tone} tone.` 
+        : plan.systemInstruction,
     voiceName: plan.voiceSettings?.voiceName,
+    language,
     onTranscriptUpdate: handleTranscriptUpdate
   });
 
@@ -131,7 +181,7 @@ export const Interview: React.FC<InterviewProps> = ({ plan, onFinish }) => {
                                 isUser 
                                 ? 'bg-ios-blue text-white rounded-tr-sm' 
                                 : 'bg-[#E9E9EB] text-black rounded-tl-sm'
-                            }`}
+                            } ${t.isInterim ? 'opacity-70 italic' : ''}`}
                         >
                             {t.text}
                         </div>

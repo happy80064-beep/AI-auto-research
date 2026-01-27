@@ -3,6 +3,7 @@ import { AnalysisResult } from '../types';
 import { analyzeTranscripts } from '../services/geminiService';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getSessionLink } from '../src/utils/url';
 
 interface DashboardProps {
   fullTranscript: string;
@@ -49,7 +50,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ fullTranscript, onRestart 
         <h1 className="text-3xl font-bold tracking-tight">{t('dash.title')}</h1>
         <div className="flex gap-4">
             <button 
-                onClick={() => alert(t('dash.share_alert'))}
+                onClick={handleShare}
                 className="px-5 py-2.5 bg-white rounded-full hover:bg-gray-100 text-sm font-medium transition-colors border border-gray-200 shadow-sm"
             >
                 {t('dash.share')}
