@@ -292,17 +292,18 @@ export const Setup: React.FC<SetupProps> = ({ onDraftGenerated, onBack, initialC
                         </div>
                     </InputRow>
                     <InputRow label={t('setup.count')} last>
-                        <div className="flex items-center gap-4 bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+                        <div className="flex items-center gap-4 bg-gray-50 rounded-xl px-4 py-3 border border-gray-200 touch-pan-y">
                             <input 
                                 type="range" 
                                 min="5" 
                                 max="20" 
                                 step="1"
-                                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-ios-blue"
+                                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-ios-blue min-w-[100px]"
                                 value={context.questionCount}
                                 onChange={(e) => setContext({ ...context, questionCount: parseInt(e.target.value) })}
+                                style={{ height: '2rem' }} // Increase touch target height
                             />
-                            <div className="w-12 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200 font-bold text-ios-blue text-lg">
+                            <div className="w-12 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200 font-bold text-ios-blue text-lg shrink-0">
                                 {context.questionCount}
                             </div>
                         </div>
