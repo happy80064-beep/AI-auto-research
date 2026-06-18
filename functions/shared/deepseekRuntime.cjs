@@ -8,6 +8,7 @@ const RATE_WINDOW_MS = Number(process.env.RATE_WINDOW_MS || 1000);
 const NORMAL_QPS = Number(process.env.RATE_LIMIT_QPS || 60);
 const LLM_QPS = Number(process.env.LLM_RATE_LIMIT_QPS || 8);
 const TASK_TTL_MS = Number(process.env.TASK_TTL_MS || 30 * 60 * 1000);
+const ENABLE_MOCK_MODE = process.env.ENABLE_MOCK_MODE === "true" || !process.env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY === "demo-key-for-test";
 
 const memoryCache = new Map();
 const rateBuckets = new Map();
@@ -41,14 +42,19 @@ function hashInput(value) {
   return crypto.createHash("sha256").update(stableStringify(value)).digest("hex");
 }
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+};
+
 function createJsonResponse(payload, status = 200, headers = {}) {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      ...CORS_HEADERS,
       ...headers,
     },
   });
@@ -59,10 +65,8 @@ function handleCors(req) {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Max-Age": "3600",
+      ...CORS_HEADERS,
+      "Access-Control-Max-Age": "86400",
     },
   });
 }
@@ -200,9 +204,81 @@ function cleanJson(text) {
   return content;
 }
 
+function generateMockResearchPlan(data) {
+  const questionCount = data.questionCount || 5;
+  const questions = [];
+  const questionTypes = ['open', 'scale', 'choice'];
+  const intents = ['需求挖掘', '痛点分析', '使用场景', '满意度评估', '建议收集'];
+  
+  for (let i = 0; i < questionCount; i++) {
+    const type = questionTypes[i % questionTypes.length];
+    questions.push({
+      id: `q_${i + 1}`,
+      text: `关于${data.objectType || '用户'}的第${i + 1}个调研问题：${data.objectives || '请分享您的看法'}`,
+      type: type,
+      intent: intents[i % intents.length],
+      ...(type === 'scale' ? { scaleLabels: ['非常不满意', '不满意', '一般', '满意', '非常满意'] } : {}),
+    });
+  }
+  
+  return {
+    title: `${data.objectType || '用户'}调研计划`,
+    logicOutline: `基于${data.industry || '目标行业'}的调研逻辑，从身份确认开始，逐步深入了解${data.userPersona || '受访者'}的需求和痛点。`,
+    analysisFramework: `将从情感分析、关键词提取、主题聚类三个维度进行量化分析。`,
+    systemInstruction: `你是 InsightFlow AI 访谈专家。请用自然、生活化的语气进行访谈。开场：您好！我是 InsightFlow AI 访谈专家，今天想了解一下您对${data.objectType || '产品'}的看法。结束时说"访谈结束"并致谢。`,
+    questions: questions,
+  };
+}
+
+function generateMockAnalysis(transcripts) {
+  return {
+    sentiment: [
+      { name: '积极', value: 60, color: '#34C759' },
+      { name: '中性', value: 30, color: '#007AFF' },
+      { name: '消极', value: 10, color: '#FF3B30' },
+    ],
+    keywords: [
+      { word: '用户体验', count: 15 },
+      { word: '功能', count: 12 },
+      { word: '界面', count: 8 },
+      { word: '性能', count: 6 },
+      { word: '价格', count: 5 },
+    ],
+    themes: [
+      { topic: '产品功能需求', count: 8 },
+      { topic: '用户界面优化', count: 6 },
+      { topic: '性能体验', count: 4 },
+    ],
+    summary: `## 调研分析报告\n\n### 核心洞察\n\n基于访谈内容，用户对产品整体满意度较高。\n\n### 关键痛点\n- 部分功能操作不够直观\n- 页面加载速度有待提升\n\n### 机会建议\n- 优化用户引导流程\n- 提升移动端适配体验`,
+  };
+}
+
 async function callDeepSeekJson({ system, user, signal }) {
+  if (ENABLE_MOCK_MODE) {
+    console.log("[Mock Mode] Generating mock response...");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    if (user.includes("生成中文商业调研执行方案")) {
+      return generateMockResearchPlan({});
+    } else if (user.includes("分析以下访谈")) {
+      return generateMockAnalysis(user);
+    } else if (user.includes("优化调研方案")) {
+      return generateMockResearchPlan({});
+    } else if (user.includes("生成项目级中文洞察报告")) {
+      return {
+        title: "项目调研洞察报告",
+        participantProfiles: [],
+        chapters: [{ title: "总体发现", content: "调研完成，数据已分析。", keyTakeaways: ["关键点1", "关键点2"] }],
+      };
+    }
+    return generateMockResearchPlan({});
+  }
+  
   const config = getDeepSeekConfig();
+  console.log(`[DeepSeek] Calling API with model: ${config.model}`);
+  
   const response = await enqueueLlm(() => withRetry(async () => {
+    const startTime = Date.now();
     const resp = await fetch(`${config.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -220,9 +296,27 @@ async function callDeepSeekJson({ system, user, signal }) {
       }),
       signal,
     });
+    
+    const duration = Date.now() - startTime;
+    console.log(`[DeepSeek] Response received in ${duration}ms, status: ${resp.status}`);
+    
     if (!resp.ok) {
       const body = await resp.text().catch(() => "");
-      const error = new Error(body || `DeepSeek request failed: ${resp.status}`);
+      console.error(`[DeepSeek] API Error: status=${resp.status}, body=${body}`);
+      
+      let errorMessage = `DeepSeek request failed: ${resp.status}`;
+      if (body) {
+        try {
+          const errorJson = JSON.parse(body);
+          if (errorJson.error?.message) {
+            errorMessage = errorJson.error.message;
+          }
+        } catch {
+          errorMessage = body;
+        }
+      }
+      
+      const error = new Error(errorMessage);
       error.status = resp.status;
       throw error;
     }
@@ -230,8 +324,19 @@ async function callDeepSeekJson({ system, user, signal }) {
   }));
 
   const content = response?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("DeepSeek returned an empty response");
-  return JSON.parse(cleanJson(content));
+  if (!content) {
+    console.error("[DeepSeek] Empty response received");
+    throw new Error("DeepSeek returned an empty response");
+  }
+  
+  try {
+    const result = JSON.parse(cleanJson(content));
+    console.log("[DeepSeek] JSON parsing successful");
+    return result;
+  } catch (parseError) {
+    console.error(`[DeepSeek] JSON parse error: ${parseError.message}, content: ${content}`);
+    throw new Error(`Failed to parse response: ${parseError.message}`);
+  }
 }
 
 function validateResearchPlan(plan) {
@@ -550,7 +655,7 @@ function createSseResponse(handler) {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
-      "Access-Control-Allow-Origin": "*",
+      ...CORS_HEADERS,
     },
   });
 }

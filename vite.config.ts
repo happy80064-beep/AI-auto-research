@@ -6,6 +6,14 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     root: '.',
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        },
+      },
+    },
     build: {
       outDir: 'dist',
       sourcemap: true,
