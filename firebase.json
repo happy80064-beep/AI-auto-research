@@ -10,10 +10,13 @@
         "firebase-debug.log.*"
       ],
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
+        "bun --cwd \"$RESOURCE_DIR\" run build"
       ]
     }
   ],
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -40,6 +43,11 @@
       {
         "source": "/api/generateProjectReport",
         "function": "generateProjectReport",
+        "region": "us-central1"
+      },
+      {
+        "source": "/api/tasks/**",
+        "function": "getTaskStatus",
         "region": "us-central1"
       },
       {

@@ -7,10 +7,11 @@ import { getSessionLink } from '../src/utils/url';
 
 interface DashboardProps {
   fullTranscript: string;
+  sessionId?: string | null;
   onRestart: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ fullTranscript, onRestart }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ fullTranscript, sessionId, onRestart }) => {
   const { t } = useLanguage();
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ fullTranscript, onRestart 
   const maxKeywordCount = analysis.keywords ? Math.max(...analysis.keywords.map(k => k.count)) : 1;
 
   const COLORS = ['#007AFF', '#34C759', '#FF3B30', '#FFCC00', '#AF52DE', '#5856D6'];
+  const handleShare = async () => {
+    const link = sessionId ? getSessionLink(sessionId) : window.location.href;
+    try {
+      await navigator.clipboard.writeText(link);
+      alert('报告链接已复制。');
+    } catch {
+      window.prompt('复制报告链接', link);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-ios-bg text-black p-6 md:p-10">

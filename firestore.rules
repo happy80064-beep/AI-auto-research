@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function hasSessionShape() {
+      return request.resource.data.keys().hasAll(['id', 'plan', 'context', 'timestamp'])
+        && request.resource.data.id == resourceId;
+    }
+
+    match /insightflow_sessions/{resourceId} {
+      allow read: if true;
+      allow create, update: if hasSessionShape();
+      allow delete: if false;
+    }
+
+    match /insightflow_reports/{resourceId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasAll(['title', 'generatedAt', 'chapters']);
+      allow delete: if false;
+    }
+
+    match /llm_cache/{resourceId} {
+      allow read, write: if false;
+    }
+  }
+}

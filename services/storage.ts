@@ -13,6 +13,7 @@ export interface SessionData {
 
 const COLLECTION_NAME = 'insightflow_sessions';
 const REPORT_COLLECTION_NAME = 'insightflow_reports';
+const pendingSessionWrites = new Map<string, ReturnType<typeof setTimeout>>();
 
 // Helper to retry Firestore operations on transient network errors
 const retryOperation = async <T>(operation: () => Promise<T>, maxRetries = 3, delayMs = 1000): Promise<T> => {
@@ -46,6 +47,9 @@ export const saveSession = async (data: SessionData): Promise<boolean> => {
   if (db) {
     try {
       console.log(`[Storage] Starting Firestore save for ${data.id}...`);
+      const existingTimer = pendingSessionWrites.get(data.id);
+      if (existingTimer) clearTimeout(existingTimer);
+
       // Retry the setDoc operation
       await retryOperation(async () => {
           // Add a 10-second timeout specifically for the network request (increased from 4s)
@@ -175,4 +179,19 @@ export const getProjectReport = async (projectTitle: string): Promise<ProjectRep
   if (local) return JSON.parse(local) as ProjectReport;
 
   return null;
+};
+
+export const saveSessionDebounced = (data: SessionData, delayMs = 600): void => {
+  try {
+    localStorage.setItem(`insightflow_${data.id}`, JSON.stringify(data));
+  } catch (e) {
+    console.error("LocalStorage save failed", e);
+  }
+
+  const existingTimer = pendingSessionWrites.get(data.id);
+  if (existingTimer) clearTimeout(existingTimer);
+  pendingSessionWrites.set(data.id, setTimeout(() => {
+    pendingSessionWrites.delete(data.id);
+    saveSession(data).catch((error) => console.warn('[Storage] Debounced Firestore save failed', error));
+  }, delayMs));
 };

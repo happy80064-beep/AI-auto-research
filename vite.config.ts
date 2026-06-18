@@ -9,6 +9,16 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: true,
+      chunkSizeWarningLimit: 300,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom'],
+            charts: ['recharts'],
+            firebase: ['firebase/app', 'firebase/firestore', 'firebase/functions', 'firebase/analytics'],
+          },
+        },
+      },
     },
     define: {
       'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY)
