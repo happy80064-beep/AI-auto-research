@@ -71,7 +71,8 @@ const postJson = async <T>(url: string, data: unknown): Promise<T> => {
 
   if (response.status === 202) {
     const payload = await response.json();
-    return pollTask<T>(payload.data.taskId);
+    if (payload.data?.taskId) return pollTask<T>(payload.data.taskId);
+    return payload.data as T;
   }
 
   if (!response.ok) {
@@ -85,11 +86,12 @@ const postJson = async <T>(url: string, data: unknown): Promise<T> => {
 
 const callFunction = async <T>(name: ApiName, data: unknown, stream = false): Promise<T> => {
   let lastError: string | null = null;
-  const sameOriginUrl = `/api/${name}${stream ? '?stream=1' : ''}`;
+  const sameOriginJsonUrl = `/api/${name}`;
+  const sameOriginStreamUrl = `/api/${name}?stream=1`;
 
-  try {
-    if (stream) {
-      const response = await fetch(sameOriginUrl, {
+  if (stream) {
+    try {
+      const response = await fetch(sameOriginStreamUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,13 +100,18 @@ const callFunction = async <T>(name: ApiName, data: unknown, stream = false): Pr
         body: JSON.stringify({ data }),
       });
       if (response.ok) return await parseSse<T>(response);
-      lastError = `Status ${response.status}`;
-    } else {
-      return await postJson<T>(sameOriginUrl, data);
+      lastError = `SSE status ${response.status}`;
+    } catch (error: any) {
+      lastError = error.message;
+      console.warn(`[DeepSeekService] Same-origin SSE failed: ${error.message}`);
     }
+  }
+
+  try {
+    return await postJson<T>(sameOriginJsonUrl, data);
   } catch (error: any) {
-    lastError = error.message;
-    console.warn(`[DeepSeekService] Same-origin call failed: ${error.message}`);
+    lastError = lastError ? `${lastError}; JSON fallback: ${error.message}` : error.message;
+    console.warn(`[DeepSeekService] Same-origin JSON failed: ${error.message}`);
   }
 
   try {
