@@ -28,8 +28,8 @@ const IDENTITY_QUESTIONS = [
 const DEFAULT_VOICE_SETTINGS = {
   gender: "female",
   language: "zh",
-  tone: "干练女声",
-  voiceName: "Zephyr",
+  tone: "豆包通用女声",
+  voiceName: "Doubao",
 };
 
 function stableStringify(value) {
@@ -709,7 +709,7 @@ function createApiHandler(options = {}) {
     const wantsStream = url.searchParams.get("stream") === "1" || req.headers.get("accept")?.includes("text/event-stream");
     const wantsAsync = url.searchParams.get("async") === "1" || name === "generateProjectReport";
 
-    if (wantsAsync && name === "generateProjectReport") {
+    if (wantsAsync && (name === "generateResearchPlan" || name === "generateProjectReport")) {
       const task = createTask(name, payload, options);
       return createJsonResponse({ data: { taskId: task.id, status: task.status } }, 202);
     }

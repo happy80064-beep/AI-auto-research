@@ -84,10 +84,20 @@ const postJson = async <T>(url: string, data: unknown): Promise<T> => {
   return payload.data as T;
 };
 
-const callFunction = async <T>(name: ApiName, data: unknown, stream = false): Promise<T> => {
+const callFunction = async <T>(name: ApiName, data: unknown, stream = false, asyncTask = false): Promise<T> => {
   let lastError: string | null = null;
   const sameOriginJsonUrl = `/api/${name}`;
   const sameOriginStreamUrl = `/api/${name}?stream=1`;
+  const sameOriginAsyncUrl = `/api/${name}?async=1`;
+
+  if (asyncTask) {
+    try {
+      return await postJson<T>(sameOriginAsyncUrl, data);
+    } catch (error: any) {
+      lastError = error.message;
+      console.warn(`[DeepSeekService] Same-origin async failed: ${error.message}`);
+    }
+  }
 
   if (stream) {
     try {
@@ -123,7 +133,7 @@ const callFunction = async <T>(name: ApiName, data: unknown, stream = false): Pr
 };
 
 export const generateResearchPlan = async (context: ResearchContext): Promise<ResearchPlan> => {
-  return callFunction<ResearchPlan>('generateResearchPlan', context, true);
+  return callFunction<ResearchPlan>('generateResearchPlan', context, false, true);
 };
 
 export const refineResearchPlan = async (currentPlan: ResearchPlan, refineInstructions: string): Promise<ResearchPlan> => {

@@ -15,14 +15,14 @@ interface PlanReviewProps {
 
 const VOICE_OPTIONS = {
     male: [
-        { label: '沉稳男声', value: 'Charon', desc: 'Deep & Steady' },
-        { label: '阳光男声', value: 'Puck', desc: 'Bright & Energetic' },
-        { label: '温柔男声', value: 'Fenrir', desc: 'Calm & Gentle' }
+        { label: '豆包沉稳男声', value: 'Doubao-Male-Steady', desc: 'Doubao Voice' },
+        { label: '豆包阳光男声', value: 'Doubao-Male-Bright', desc: 'Doubao Voice' },
+        { label: '豆包温柔男声', value: 'Doubao-Male-Gentle', desc: 'Doubao Voice' }
     ],
     female: [
-        { label: '干练女声', value: 'Zephyr', desc: 'Professional' },
-        { label: '温柔女声', value: 'Kore', desc: 'Warm & Caring' },
-        { label: '甜美女声', value: 'Aoede', desc: 'Sweet & Light' }
+        { label: '豆包通用女声', value: 'Doubao-Female-General', desc: 'Doubao Voice' },
+        { label: '豆包温柔女声', value: 'Doubao-Female-Warm', desc: 'Doubao Voice' },
+        { label: '豆包甜美女声', value: 'Doubao-Female-Sweet', desc: 'Doubao Voice' }
     ]
 };
 
@@ -35,6 +35,8 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
   const [shareLink, setShareLink] = useState("");
   const [generatedId, setGeneratedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [startingInterview, setStartingInterview] = useState(false);
 
   const handleOptimize = async () => {
     if (!refineInstruction.trim()) return;
@@ -51,48 +53,54 @@ export const PlanReview: React.FC<PlanReviewProps> = ({ initialPlan, context, on
     }
   };
 
-  const handleGenerateLink = async () => {  
-    const uniqueId = Math.random().toString(36).substring(2, 9);  
-    let usePayload = false;
+  const handleGenerateLink = async () => {
+    if (generatingLink || startingInterview) return;
+    setGeneratingLink(true);
+    try {
+      const uniqueId = Math.random().toString(36).substring(2, 9);  
+      let usePayload = false;
 
-    // 添加超时机制 - 如果 saveSession 超过 10 秒就跳过 (匹配 storage.ts 的重试逻辑)
-    const savePromise = saveSession({  
-        id: uniqueId,  
-        plan,  
-        context,  
-        timestamp: Date.now()  
-    });  
+      // 添加超时机制 - 如果 saveSession 超过 10 秒就跳过 (匹配 storage.ts 的重试逻辑)
+      const savePromise = saveSession({  
+          id: uniqueId,  
+          plan,  
+          context,  
+          timestamp: Date.now()  
+      });  
+        
+      const timeoutPromise = new Promise<boolean>((_, reject) =>   
+        setTimeout(() => reject(new Error('Save timeout')), 10000)  
+      );  
+        
+      try {  
+        const success = await Promise.race([savePromise, timeoutPromise]);
+        if (!success) {
+            console.warn('Session save returned false, using payload link');
+            usePayload = true;
+        }
+      } catch (e) {  
+        console.error('Session save failed or timed out:', e);
+        usePayload = true;
+      }  
       
-    const timeoutPromise = new Promise<boolean>((_, reject) =>   
-      setTimeout(() => reject(new Error('Save timeout')), 10000)  
-    );  
-      
-    try {  
-      const success = await Promise.race([savePromise, timeoutPromise]);
-      if (!success) {
-          console.warn('Session save returned false, using payload link');
-          usePayload = true;
+      // Always set generatedId even if save failed (App can retry save)
+      setGeneratedId(uniqueId);
+        
+      let link;
+      if (usePayload) {
+          // Fallback: Generate a payload link that contains all data
+          // This works even if database is offline
+          link = getPayloadLink({ plan, context });
+      } else {
+          // Normal: Use Template Link (ID lookup)
+          link = getTemplateLink(uniqueId);
       }
-    } catch (e) {  
-      console.error('Session save failed or timed out:', e);
-      usePayload = true;
-    }  
-    
-    // Always set generatedId even if save failed (App can retry save)
-    setGeneratedId(uniqueId);
-      
-    let link;
-    if (usePayload) {
-        // Fallback: Generate a payload link that contains all data
-        // This works even if database is offline
-        link = getPayloadLink({ plan, context });
-    } else {
-        // Normal: Use Template Link (ID lookup)
-        link = getTemplateLink(uniqueId);
-    }
 
-    setShareLink(link);  
-    setShowLinkModal(true);  
+      setShareLink(link);  
+      setShowLinkModal(true);
+    } finally {
+      setGeneratingLink(false);
+    }
   };  
 
   const handleCopy = async () => {
@@ -166,8 +174,12 @@ ${finalLink}`;
   };
 
   const handleStartNow = () => {
+    if (startingInterview) return;
+    setStartingInterview(true);
     setShowLinkModal(false);
-    onConfirm(plan, generatedId || undefined);
+    setTimeout(() => {
+      onConfirm(plan, generatedId || undefined);
+    }, 50);
   };
 
   const handleVoiceSettingChange = (updates: Partial<VoiceSettings>) => {
@@ -214,9 +226,15 @@ ${finalLink}`;
          </div>
          <button 
              onClick={handleGenerateLink}
-             className="bg-black text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-gray-800 transition-colors shadow-lg active:scale-95"
+             disabled={generatingLink || startingInterview}
+             className="bg-black text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-gray-800 transition-colors shadow-lg active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 min-w-[132px] justify-center"
          >
-             {t('review.confirm')}
+             {generatingLink ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                  生成中...
+                </>
+             ) : t('review.confirm')}
          </button>
        </header>
 
@@ -361,7 +379,10 @@ ${finalLink}`;
                             className="shrink-0 px-5 bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg active:scale-95 flex items-center justify-center min-w-[80px]"
                         >
                             {optimizing ? (
-                                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                                <span className="flex items-center gap-2">
+                                    <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                                    优化中
+                                </span>
                             ) : t('review.submit')}
                         </button>
                     </div>
@@ -486,9 +507,15 @@ ${finalLink}`;
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={handleStartNow}
-                                className="py-3 bg-ios-blue/10 hover:bg-ios-blue/20 text-ios-blue rounded-xl font-bold text-sm transition-colors"
+                                disabled={startingInterview}
+                                className="py-3 bg-ios-blue/10 hover:bg-ios-blue/20 text-ios-blue rounded-xl font-bold text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                {t('review.modal.start')}
+                                {startingInterview ? (
+                                    <>
+                                        <span className="w-4 h-4 border-2 border-ios-blue/30 border-t-ios-blue rounded-full animate-spin" />
+                                        进入中...
+                                    </>
+                                ) : t('review.modal.start')}
                             </button>
                              <button
                                 onClick={onEnterDashboard}
@@ -508,6 +535,17 @@ ${finalLink}`;
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
+            </div>
+         </div>
+       )}
+
+       {(optimizing || generatingLink || startingInterview) && (
+         <div className="fixed inset-0 z-[60] bg-white/65 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200 pointer-events-auto">
+            <div className="bg-white rounded-2xl px-6 py-5 shadow-2xl border border-black/5 flex flex-col items-center gap-3 min-w-[220px]">
+                <div className="w-9 h-9 border-4 border-ios-blue/20 border-t-ios-blue rounded-full animate-spin" />
+                <p className="text-sm font-bold text-black">
+                    {startingInterview ? '正在进入 AI 访谈专家...' : generatingLink ? '正在生成访谈链接...' : 'AI 正在优化方案...'}
+                </p>
             </div>
          </div>
        )}

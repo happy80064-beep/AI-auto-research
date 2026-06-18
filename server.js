@@ -2,7 +2,7 @@
  * @Author: songyanan
  * @Date: 2026-06-18 11:09:10
  * @LastEditors: songyanan
- * @LastEditTime: 2026-06-18 14:58:14
+ * @LastEditTime: 2026-06-18 16:03:15
  * @Description: file content
  */
 import { existsSync } from "fs";
@@ -31,7 +31,6 @@ const server = Bun.serve({
   port,
   async fetch(req) {
     const url = new URL(req.url);
-    console.log('请求:', url)
     
     if (req.method === "OPTIONS") {
       return new Response(null, {

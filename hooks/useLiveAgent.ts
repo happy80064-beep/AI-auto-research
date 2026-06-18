@@ -69,7 +69,14 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === 'zh' ? 'zh-CN' : 'en-US';
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find((voice) => voice.lang === utterance.lang && voice.name.includes(voiceName || ''));
+    const preferredVoiceName = voiceName?.toLowerCase() || '';
+    const preferred = voices.find((voice) => {
+      const name = voice.name.toLowerCase();
+      return voice.lang === utterance.lang && (
+        name.includes(preferredVoiceName) ||
+        (preferredVoiceName.startsWith('doubao') && (name.includes('doubao') || name.includes('豆包')))
+      );
+    });
     const fallback = voices.find((voice) => voice.lang === utterance.lang);
     utterance.voice = preferred || fallback || null;
     utterance.onstart = () => setIsSpeaking(true);
