@@ -52,6 +52,16 @@ const extractNextQuestion = async (systemInstruction: string, userText: string):
   return '谢谢分享，可以再具体说说吗？';
 };
 
+const stripMarkdownForSpeech = (text: string): string => {
+  return text
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/[*_~`]/g, '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+};
+
 export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', onTranscriptUpdate }: UseLiveAgentProps) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -62,11 +72,14 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const lastFinalTextRef = useRef('');
   const pendingReplyRef = useRef(false);
+  const speechActiveRef = useRef(false);
 
-  const speak = (text: string) => {
+  const speak = (text: string, onEnd?: () => void) => {
     if (!window.speechSynthesis || !text.trim()) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+    const speechText = stripMarkdownForSpeech(text);
+    if (!speechText) return;
+    const utterance = new SpeechSynthesisUtterance(speechText);
     utterance.lang = language === 'zh' ? 'zh-CN' : 'en-US';
     const voices = window.speechSynthesis.getVoices();
     const preferredVoiceName = voiceName?.toLowerCase() || '';
@@ -79,8 +92,17 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
     });
     const fallback = voices.find((voice) => voice.lang === utterance.lang);
     utterance.voice = preferred || fallback || null;
+    speechActiveRef.current = true;
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      speechActiveRef.current = false;
+      setIsSpeaking(false);
+      onEnd?.();
+    };
+    utterance.onerror = () => {
+      speechActiveRef.current = false;
+      setIsSpeaking(false);
+    };
     window.speechSynthesis.speak(utterance);
   };
 
@@ -193,5 +215,6 @@ export const useLiveAgent = ({ systemInstruction, voiceName, language = 'zh', on
     isConnected,
     isSpeaking,
     volume,
+    speechActiveRef,
   };
 };

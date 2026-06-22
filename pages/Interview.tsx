@@ -86,7 +86,7 @@ export const Interview: React.FC<InterviewProps> = ({ plan, onFinish }) => {
     });
   };
 
-  const { connect, disconnect, isConnected, isSpeaking, volume } = useLiveAgent({
+  const { connect, disconnect, isConnected, isSpeaking, volume, speechActiveRef } = useLiveAgent({
     systemInstruction: plan.voiceSettings 
         ? `${plan.systemInstruction}\n\n[Voice/Tone Instruction]\nPlease speak in a ${plan.voiceSettings.tone} tone.` 
         : plan.systemInstruction,
@@ -101,22 +101,35 @@ export const Interview: React.FC<InterviewProps> = ({ plan, onFinish }) => {
     onFinish(fullText);
   };
 
+  const handleEndSessionRef = useRef(handleEndSession);
+  handleEndSessionRef.current = handleEndSession;
+
   useEffect(() => {
     if (transcript.length > 0) {
         const lastMsg = transcript[transcript.length - 1];
         const lowerText = lastMsg.text.toLowerCase();
-        
+
         // Dynamic End detection keywords based on language context
-        const endKeywords = language === 'zh' 
+        const endKeywords = language === 'zh'
             ? ["访谈结束", "感谢您的参与", "再见"]
             : ["interview is over", "thank you", "goodbye", "end of interview"];
-            
+
         const isEndSignal = endKeywords.some(kw => lowerText.includes(kw));
 
         if (isEndSignal && isConnected) {
+            // 等待语音播报完毕后再结束会话
+            // 使用 speechActiveRef 同步标记，避免 speechSynthesis.speaking 的异步时序问题
+            // 延迟 100ms 确保 speak() 已被调用（onTranscriptUpdate 在 speak 之前执行）
             setTimeout(() => {
-                handleEndSession();
-            }, 4000); 
+                const waitForSpeechEnd = () => {
+                    if (speechActiveRef.current) {
+                        setTimeout(waitForSpeechEnd, 500);
+                    } else {
+                        setTimeout(() => handleEndSessionRef.current(), 1500);
+                    }
+                };
+                waitForSpeechEnd();
+            }, 100);
         }
     }
   }, [transcript, isConnected, language]);
