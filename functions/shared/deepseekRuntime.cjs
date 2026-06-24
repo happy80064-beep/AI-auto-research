@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { notifyError: notifyDingTalk } = require("./dingtalkNotifier.cjs");
 
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-chat";
@@ -318,6 +319,13 @@ async function callDeepSeekJson({ system, user, signal }) {
       
       const error = new Error(errorMessage);
       error.status = resp.status;
+      notifyDingTalk({
+        route: "deepseek-chat",
+        method: "POST",
+        status: resp.status,
+        message: errorMessage,
+        extra: `model=${config.model}, duration=${duration}ms`,
+      });
       throw error;
     }
     return resp.json();
@@ -619,6 +627,13 @@ function createTask(kind, payload, options) {
       task.status = "failed";
       task.error = error.message || String(error);
       task.updatedAt = Date.now();
+      notifyDingTalk({
+        route: kind,
+        method: "POST",
+        message: task.error,
+        taskId: task.id,
+        extra: "async-task-failed",
+      });
     });
   return task;
 }
@@ -707,9 +722,11 @@ function createApiHandler(options = {}) {
       }, 202);
     }
     const wantsStream = url.searchParams.get("stream") === "1" || req.headers.get("accept")?.includes("text/event-stream");
-    const wantsAsync = url.searchParams.get("async") === "1" || name === "generateProjectReport";
+    // 所有 LLM 接口默认使用异步模式，除非显式指定 sync=1 或 stream=1
+    const wantsSync = url.searchParams.get("sync") === "1";
+    const wantsAsync = !wantsSync && !wantsStream;
 
-    if (wantsAsync && (name === "generateResearchPlan" || name === "generateProjectReport")) {
+    if (wantsAsync) {
       const task = createTask(name, payload, options);
       return createJsonResponse({ data: { taskId: task.id, status: task.status } }, 202);
     }
@@ -723,6 +740,12 @@ function createApiHandler(options = {}) {
           sendSse(controller, "result", result.data);
         } catch (error) {
           sendSse(controller, "error", { message: error.message || String(error) });
+          notifyDingTalk({
+            route: name,
+            method: "POST",
+            message: error.message || String(error),
+            extra: "sse-stream",
+          });
         }
       });
     }
@@ -731,6 +754,13 @@ function createApiHandler(options = {}) {
       const result = await routeHandlers[name](payload, options);
       return createJsonResponse({ data: result.data, meta: { cache: result.cache } });
     } catch (error) {
+      notifyDingTalk({
+        route: name,
+        method: req.method,
+        status: 500,
+        message: error.message || String(error),
+        errorStack: error.stack,
+      });
       return createJsonResponse({ error: { message: error.message || String(error) } }, 500);
     }
   };

@@ -9,6 +9,9 @@
     "server": "bun server.js",
     "start": "bun run server",
     "test:load": "bun scripts/load-test.ts",
+    "test:dingtalk": "bun scripts/test-dingtalk.ts",
+    "test:api": "bun scripts/test-api.ts",
+    "test:stress": "bun scripts/test-stress.ts",
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {

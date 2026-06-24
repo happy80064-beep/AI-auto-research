@@ -1,4 +1,4 @@
-# AutoResearch 接口响应时长与 20000 并发压力测试报告
+# AI-auto-research 接口响应时长与 20000 并发压力测试报告
 
 测试日期：2026-06-18  
 测试环境：本机 Windows + Bun 1.3.11  
@@ -43,7 +43,7 @@ curl http://127.0.0.1:8080/health
 ```json
 {
   "ok": true,
-  "service": "AutoResearch",
+  "service": "AI-auto-research",
   "runtime": "bun",
   "model": "deepseek-chat"
 }

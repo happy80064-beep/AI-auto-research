@@ -1,14 +1,14 @@
-# AutoResearch 压力测试规范与执行文档
+# AI-auto-research 压力测试规范与执行文档
 
 文档版本：v1.0  
-适用系统：AutoResearch Bun HTTP Service  
+适用系统：AI-auto-research Bun HTTP Service  
 最后更新：2026-06-18
 
 ## 1. 测试目标
 
 ### 1.1 测试目的
 
-压力测试用于验证 AutoResearch 服务在不同负载下的响应能力、稳定性和降级能力，具体目标如下：
+压力测试用于验证 AI-auto-research 服务在不同负载下的响应能力、稳定性和降级能力，具体目标如下：
 
 - 验证 Bun 原生 HTTP 服务对普通接口的并发承载能力。
 - 验证 LLM 接口在高并发下的限流、排队、缓存和降级机制。
@@ -405,7 +405,7 @@ curl http://127.0.0.1:8080/health
 ## 7. 压测报告标准模板
 
 ```markdown
-# AutoResearch 压测报告
+# AI-auto-research 压测报告
 
 ## 1. 基本信息
 

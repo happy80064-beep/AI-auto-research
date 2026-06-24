@@ -47,7 +47,7 @@ const server = Bun.serve({
     if (url.pathname === "/health") {
       return new Response(JSON.stringify({
         ok: true,
-        service: "AutoResearch",
+        service: "AI-auto-research",
         runtime: "bun",
         model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
         time: Date.now(),
@@ -91,5 +91,5 @@ const server = Bun.serve({
   },
 });
 
-console.log(`AutoResearch Bun server listening on http://localhost:${server.port}`);
+console.log(`AI-auto-research Bun server listening on http://localhost:${server.port}`);
 console.log(`DeepSeek model: ${process.env.DEEPSEEK_MODEL || "deepseek-chat"}`);

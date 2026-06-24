@@ -1,14 +1,14 @@
-# AutoResearch API Reference
+# AI-auto-research API Reference
 
 文档版本：v1.0  
-适用系统：AutoResearch Bun HTTP Service / Firebase Functions API  
+适用系统：AI-auto-research Bun HTTP Service / Firebase Functions API  
 最后更新：2026-06-18
 
 ## 1. 文档概述
 
 ### 1.1 文档目的
 
-本文档用于说明 AutoResearch 后端 HTTP API 的接口规范、请求参数、响应结构、错误码与调用示例，供前端开发、后端维护、外部系统对接、测试验收与运维排障使用。
+本文档用于说明 AI-auto-research 后端 HTTP API 的接口规范、请求参数、响应结构、错误码与调用示例，供前端开发、后端维护、外部系统对接、测试验收与运维排障使用。
 
 ### 1.2 适用范围
 
@@ -210,7 +210,7 @@ GET /health
 | 字段名 | 类型 | 说明 |
 |---|---|---|
 | `ok` | boolean | 服务是否健康 |
-| `service` | string | 服务名称，固定为 `AutoResearch` |
+| `service` | string | 服务名称，固定为 `AI-auto-research` |
 | `runtime` | string | 运行时，当前为 `bun` |
 | `model` | string | 当前模型名，默认 `deepseek-chat` |
 | `time` | number | 服务端时间戳，单位毫秒 |
@@ -220,7 +220,7 @@ GET /health
 ```json
 {
   "ok": true,
-  "service": "AutoResearch",
+  "service": "AI-auto-research",
   "runtime": "bun",
   "model": "deepseek-chat",
   "time": 1781754307800

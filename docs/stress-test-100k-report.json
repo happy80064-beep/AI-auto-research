@@ -1,0 +1,107 @@
+{
+  "summary": {
+    "totalRequests": 100000,
+    "success": 100000,
+    "failed": 0,
+    "errorRate": "0.00%",
+    "totalSeconds": 26.26,
+    "rps": 3808,
+    "latencyMs": {
+      "min": 51.4,
+      "p50": 900,
+      "p90": 2465.5,
+      "p95": 3067.6,
+      "p99": 4004.5,
+      "max": 4385.3
+    }
+  },
+  "endpoints": [
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health",
+      "total": 30053,
+      "success": 30053,
+      "failed": 0,
+      "errorRate": "0.00%",
+      "latencyMs": {
+        "p50": 897.3,
+        "p95": 2977.4,
+        "p99": 3988.6
+      },
+      "statusCounts": {
+        "200": 30053
+      }
+    },
+    {
+      "name": "generateResearchPlan",
+      "method": "POST",
+      "path": "/api/generateResearchPlan",
+      "total": 19985,
+      "success": 19985,
+      "failed": 0,
+      "errorRate": "0.00%",
+      "latencyMs": {
+        "p50": 905.1,
+        "p95": 3370.9,
+        "p99": 4011.9
+      },
+      "statusCounts": {
+        "200": 19889,
+        "202": 96
+      }
+    },
+    {
+      "name": "analyzeTranscripts",
+      "method": "POST",
+      "path": "/api/analyzeTranscripts",
+      "total": 19968,
+      "success": 19968,
+      "failed": 0,
+      "errorRate": "0.00%",
+      "latencyMs": {
+        "p50": 900,
+        "p95": 2960.5,
+        "p99": 4020.9
+      },
+      "statusCounts": {
+        "200": 19904,
+        "202": 64
+      }
+    },
+    {
+      "name": "generateProjectReport",
+      "method": "POST",
+      "path": "/api/generateProjectReport",
+      "total": 10021,
+      "success": 10021,
+      "failed": 0,
+      "errorRate": "0.00%",
+      "latencyMs": {
+        "p50": 905,
+        "p95": 3440.9,
+        "p99": 3995.6
+      },
+      "statusCounts": {
+        "202": 10021
+      }
+    },
+    {
+      "name": "tasks",
+      "method": "GET",
+      "path": "/api/tasks/stress-test-nonexistent",
+      "total": 19973,
+      "success": 19973,
+      "failed": 0,
+      "errorRate": "0.00%",
+      "latencyMs": {
+        "p50": 898.5,
+        "p95": 2996.1,
+        "p99": 4022.1
+      },
+      "statusCounts": {
+        "404": 19973
+      }
+    }
+  ]
+}
